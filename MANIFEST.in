@@ -1,0 +1,13 @@
+include LICENSE
+include VERSION
+include README.md
+include CHANGELOG.md
+include requirements.txt
+include tox.ini
+
+recursive-include conf *.yml
+recursive-include docs *
+recursive-include icos_fl *.py
+
+recursive-exclude * __pycache__
+recursive-exclude * *.pyc

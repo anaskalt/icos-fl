@@ -1,0 +1,12 @@
+# Core Dependencies
+torch>=2.1.0
+flwr>=1.0, <2.0
+numpy>=1.24.0
+pandas>=2.1.0
+pyyaml>=6.0.1
+dataclay>=3.0.0
+
+# Development
+flake8>=6.1.0
+mypy>=1.5.1
+black>=23.9.1
