@@ -1,0 +1,50 @@
+#################################################
+#          ICOS-FL Server Configuration          #
+#################################################
+
+icos:
+  # Federation Settings
+  # ------------------
+  # Control parameters for the federated learning process
+  federation:
+    # Network Configuration
+    address: "0.0.0.0"      # Server binding address (0.0.0.0 for all interfaces)
+    port: 8080              # Server listening port
+    
+    # Federation Process
+    min_clients: 3         # Minimum number of clients required to start training
+    rounds: 10             # Total number of federation rounds to perform
+    timeout: 300           # Client response timeout in seconds
+
+  # Model Architecture
+  # -----------------
+  # LSTM model parameters and training configuration
+  model:
+    # Network Architecture
+    input_size: 10         # Number of input features
+    hidden_size: 32        # Number of hidden units in LSTM layers
+    num_layers: 2          # Number of stacked LSTM layers
+    output_size: 1         # Number of output features
+    
+    # Training Parameters
+    learning_rate: 0.001   # Global learning rate for client training
+    
+    # Checkpointing
+    checkpoint_path: "/models/global"  # Path to save model checkpoints
+    checkpoint_interval: 5             # Save checkpoint every N rounds
+
+  # Logging Configuration
+  # -------------------
+  # Server logging and monitoring settings
+  logging:
+    # Log Level
+    level: "info"          # Logging level (debug, info, warning, error, critical)
+    
+    # File Logging
+    file: "/var/log/icos-fl/server.log"  # Log file path
+    max_bytes: 52428800    # Maximum log file size (50MB)
+    backup_count: 7        # Number of backup log files to keep
+    
+    # Console Output
+    console: true         # Enable console logging
+    color: true           # Enable colored output in console

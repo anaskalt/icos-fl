@@ -1,0 +1,68 @@
+#################################################
+#          ICOS-FL Client Configuration          #
+#################################################
+
+icos:
+  # Server Connection
+  # ----------------
+  # Configuration for connecting to federation server
+  server:
+    address: "localhost"  # Server hostname or IP address
+    port: 8080            # Server port number
+    
+  # Data Pipeline
+  # ------------
+  # Settings for data collection and preprocessing
+  data:
+    # Data Source
+    host: "dataclay://metrics-cluster"  # DataClay cluster address
+    dataset: "metrics-dataset"          # Dataset identifier
+    alias: "metrics-timeseries"         # Time series alias
+    
+    # Collection Parameters
+    poll_interval: 60           # Data polling interval in seconds
+    timeout: 300                # Maximum wait time for data fetch
+    target_metric: "cpu_usage"  # Target metric for prediction
+
+  # Model Architecture
+  # -----------------
+  # Local model configuration (should match server)
+  model:
+    input_size: 10        # Number of input features
+    hidden_size: 32       # Number of hidden units in LSTM layers
+    num_layers: 2         # Number of stacked LSTM layers
+    output_size: 1        # Number of output features
+    learning_rate: 0.001  # Local learning rate
+
+  # Training Settings
+  # ---------------
+  # Local training configuration
+  training:
+    epochs: 100            # Number of local training epochs per round
+    batch_size: 32         # Training batch size
+    time_step: 10          # Sequence length for time series
+    fill_nan: 10           # Maximum consecutive NaN values to fill
+    train_test_split: 0.8  # Train/test data split ratio
+
+  # Logging Configuration
+  # -------------------
+  # Client logging settings
+  logging:
+    # Log Level
+    level: "info"         # Logging level (debug, info, warning, error, critical)
+    
+    # File Logging
+    file: "/var/log/icos-fl/client.log"  # Log file path
+    max_bytes: 10485760   # Maximum log file size (10MB)
+    backup_count: 3       # Number of backup log files to keep
+    
+    # Console Output
+    console: true         # Enable console logging
+    color: true           # Enable colored output in console
+
+#################################################
+# Note: Adjust the above parameters based on your
+# specific use case and system requirements.
+# Ensure model architecture parameters match
+# between server and clients.
+#################################################
