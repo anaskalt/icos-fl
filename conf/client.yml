@@ -23,6 +23,7 @@ icos:
     poll_interval: 60           # Data polling interval in seconds
     timeout: 300                # Maximum wait time for data fetch
     target_metric: "cpu_usage"  # Target metric for prediction
+    min_samples: 100           # Minimum number of samples required for training
 
   # Model Architecture
   # -----------------

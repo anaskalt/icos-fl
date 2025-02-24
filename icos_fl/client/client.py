@@ -30,9 +30,10 @@ Note:
 """
 
 import numpy as np
+import pandas as pd
 import torch
 import flwr as fl
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from torch.utils.data import DataLoader
 from icos_fl.data.fetcher import DataFetcher 
 from icos_fl.data.processor import DataProcessor
@@ -85,6 +86,7 @@ def filter_data_args(confdata: Dict) -> Dict:
         "data-alias": "alias",
         "data-poll-interval": "poll_interval",
         "data-timeout": "timeout",
+        "data-min-samples": "min_samples",
         "data-target-metric": "target_metric"
     }
     
@@ -94,7 +96,8 @@ def filter_data_args(confdata: Dict) -> Dict:
     # Set defaults
     defaults = {
         "poll_interval": 60,
-        "timeout": 300
+        "timeout": 300,
+        "min_samples": 100
     }
     
     return {**defaults, **filtered}
@@ -279,7 +282,29 @@ class FLClient(fl.client.NumPyClient):
             LOG.error(f"Data pipeline initialization failed: {str(e)}")
             return False
 
-    def get_parameters(self, config: Dict) -> List[np.ndarray]:
+    def _collect_training_data(self) -> Optional[pd.DataFrame]:
+        """Collect sufficient data for training.
+        
+        Fetches and preprocesses data until enough samples are available.
+
+        Returns:
+            pd.DataFrame: Preprocessed training data
+        """
+        while True:
+            # Check if we have enough data
+            df = self.data_fetcher.get_collected_data()
+            if df is not None:
+                return df
+                
+            # Fetch more data
+            metric_value = self.data_fetcher.fetch_metrics()
+            if metric_value is None:
+                LOG.warning("Failed to fetch metrics, retrying...")
+                continue
+                
+            LOG.debug(f"Collected new measurement: {metric_value}")
+
+    def get_parameters(self) -> List[np.ndarray]:
         """Get current model parameters.
         
         Args:
@@ -326,15 +351,21 @@ class FLClient(fl.client.NumPyClient):
         try:
             # Update local model
             self.set_parameters(parameters)
+
+            # Collect training data
+            df = self._collect_training_data()
+            if df is None:
+                raise RuntimeError("Failed to collect sufficient training data")
             
             # Fetch and process data
-            raw_data = self.data_fetcher.fetch_metrics(
-                timeout=self.data_config['timeout']
-            )
-            if raw_data is None:
-                raise RuntimeError("Failed to fetch training data")
-                
-            processed_data = self.data_processor.preprocess(raw_data)
+            #raw_data = self.data_fetcher.fetch_metrics(
+            #    timeout=self.data_config['timeout']
+            #)
+            #if raw_data is None:
+            #    raise RuntimeError("Failed to fetch training data")
+
+            # Process and create training dataset
+            processed_data = self.data_processor.preprocess(df) #raw_data
             train_data, _ = self.data_processor.create_dataset(
                 processed_data,
                 metric=self.data_config['target_metric']
@@ -372,16 +403,21 @@ class FLClient(fl.client.NumPyClient):
         """
         try:
             self.set_parameters(parameters)
-            
+
+            # Collect test data
+            df = self._collect_training_data()
+            if df is None:
+                raise RuntimeError("Failed to collect sufficient test data")
+
             # Fetch test data
-            raw_data = self.data_fetcher.fetch_metrics(
-                timeout=self.data_config['timeout']
-            )
-            if raw_data is None:
-                raise RuntimeError("Failed to fetch test data")
+            #raw_data = self.data_fetcher.fetch_metrics(
+            #    timeout=self.data_config['timeout']
+            #)
+            #if raw_data is None:
+            #    raise RuntimeError("Failed to fetch test data")
             
             # Process and create test dataset
-            processed_data = self.data_processor.preprocess(raw_data)
+            processed_data = self.data_processor.preprocess(df) #raw_data
             _, test_data = self.data_processor.create_dataset(
                 processed_data,
                 metric=self.data_config['target_metric']
