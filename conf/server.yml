@@ -30,7 +30,7 @@ icos:
     learning_rate: 0.001   # Global learning rate for client training
     
     # Checkpointing
-    checkpoint_path: "/models/global"  # Path to save model checkpoints
+    checkpoint_path: "/tmp/models/global"  # Path to save model checkpoints
     checkpoint_interval: 5             # Save checkpoint every N rounds
 
   # Logging Configuration
@@ -41,7 +41,7 @@ icos:
     level: "info"          # Logging level (debug, info, warning, error, critical)
     
     # File Logging
-    file: "/var/log/icos-fl/server.log"  # Log file path
+    file: "/tmp/log/icos-fl/server.log"  # Log file path
     max_bytes: 52428800    # Maximum log file size (50MB)
     backup_count: 7        # Number of backup log files to keep
     

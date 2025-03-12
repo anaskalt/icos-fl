@@ -20,10 +20,10 @@ icos:
     alias: "metrics-timeseries"         # Time series alias
     
     # Collection Parameters
-    poll_interval: 60           # Data polling interval in seconds
+    poll_interval: 1           # Data polling interval in seconds
     timeout: 300                # Maximum wait time for data fetch
     target_metric: "cpu_usage"  # Target metric for prediction
-    min_samples: 100           # Minimum number of samples required for training
+    min_samples: 10000          # Minimum number of samples required for training
 
   # Model Architecture
   # -----------------
@@ -53,7 +53,7 @@ icos:
     level: "info"         # Logging level (debug, info, warning, error, critical)
     
     # File Logging
-    file: "/var/log/icos-fl/client.log"  # Log file path
+    file: "/tmp/log/icos-fl/client.log"  # Log file path
     max_bytes: 10485760   # Maximum log file size (10MB)
     backup_count: 3       # Number of backup log files to keep
     
