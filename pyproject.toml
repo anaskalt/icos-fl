@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "icos-fl"
+version = "0.1.0"
+description = "ICOS-FL: Flower-powered FL framework for real-time resource monitoring (LSTM) & predictions. Modular architecture for custom AI models + private distributed training."
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+  { name = "Anastasios Kaltakis", email = "anastasioskaltakis@gmail.com" },
+]
+dependencies = [
+  "flwr[simulation]>=1.16.0",
+  "torch==2.5.1",
+  "wandb==0.17.8",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[tool.flwr.app]
+publisher = "Anastasios Kaltakis"
+
+[tool.flwr.app.components]
+serverapp = "src.icos_fl.server.server:app"
+clientapp = "src.icos_fl.client.client:app"
+
+[tool.flwr.app.config]
+num-server-rounds = 10
+fraction-fit = 1.0
+fraction-evaluate = 1.0
+local-epochs = 2
+min-available-clients = 2
+batch-size = 128
+save-global-model = false
+server-device = "cpu"
+use-wandb = true
+
+[tool.flwr.federations]
+default = "local-deployment"
+
+[tool.flwr.federations.local-deployment]
+address = "127.0.0.1:9093"
+insecure = true
