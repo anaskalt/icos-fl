@@ -1,11 +1,30 @@
+"""ASCII art graphical resources for the ICOS-FL framework.
+
+This module contains various ASCII art definitions used for visual representation
+of the ICOS-FL framework components. These graphical resources can be imported
+and displayed in terminal outputs to visually enhance user interfaces or documentation.
+
+Available ASCII art:
+- LOGO1, ICOS_FL_LOGO: Main project logos
+- OBJECT1, OBJECT2, OBJECT3: Visual representations of system architecture
+- NEURAL_NET: Representation of a neural network with federated learning
+- FEDERATED_ARCH: Diagram of federated architecture
+- CLOUD_SYSTEM: Cloud infrastructure visualization
+- ROBOT_ICS: Robot character representation
+
+Example:
+    >>> from icos_fl.utils.logo import ICOS_FL_LOGO
+    >>> print(ICOS_FL_LOGO)
+"""
+
 LOGO1 = r"""
-  ██╗ ██████╗ ██████╗ ███████╗    ███████╗██╗     
-  ██║██╔════╝██╔═══██╗██╔════╝    ██╔════╝██║     
-  ██║██║     ██║   ██║███████╗    █████╗  ██║     
-  ██║██║     ██║   ██║╚════██║    ██╔══╝  ██║     
+  ██╗ ██████╗ ██████╗ ███████╗    ███████╗██╗
+  ██║██╔════╝██╔═══██╗██╔════╝    ██╔════╝██║
+  ██║██║     ██║   ██║███████╗    █████╗  ██║
+  ██║██║     ██║   ██║╚════██║    ██╔══╝  ██║
   ██║╚██████╗╚██████╔╝███████╗    ██║     ███████╗
   ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝    ╚═╝     ╚══════╝
-               I C O S   F L 
+               I C O S   F L
 """
 
 OBJECT1 = r"""
@@ -80,13 +99,13 @@ FEDERATED_ARCH = r"""
 """
 
 ICOS_FL_LOGO = r"""
-  ██╗ ██████╗ ██████╗ ███████╗    ███████╗██╗     
-  ██║██╔════╝██╔═══██╗██╔════╝    ██╔════╝██║     
-  ██║██║     ██║   ██║███████╗    █████╗  ██║     
-  ██║██║     ██║   ██║╚════██║    ██╔══╝  ██║     
+  ██╗ ██████╗ ██████╗ ███████╗    ███████╗██╗
+  ██║██╔════╝██╔═══██╗██╔════╝    ██╔════╝██║
+  ██║██║     ██║   ██║███████╗    █████╗  ██║
+  ██║██║     ██║   ██║╚════██║    ██╔══╝  ██║
   ██║╚██████╗╚██████╔╝███████╗    ██║     ███████╗
   ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝    ╚═╝     ╚══════╝
-   ░▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀░  
+   ░▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀░
         ICOS FL :: Federated Learning Framework
 """
 
