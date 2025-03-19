@@ -10,14 +10,14 @@ type: software
 authors:
   - given-names: Anastasios
     family-names: Kaltakis
-    alias: fedejaure
+    alias: anaskalt
 identifiers:
   - type: url
     value: >-
       https://github.com/anaskalt/icos-fl/releases/tag/v0.1.0
     description: The Software Heritage link for version 0.1.0.
 repository-code: 'https://github.com/anaskalt/icos-fl'
-abstract: ICOS-FL: Flower-powered FL framework for real-time resource monitoring (LSTM) & predictions. Modular architecture for custom AI models + private distributed training.
+abstract: 'ICOS-FL: Flower-powered FL framework for real-time resource monitoring (LSTM) & predictions. Modular architecture for custom AI models + private distributed training.'
 keywords:
   - icos-fl
 license: MIT
