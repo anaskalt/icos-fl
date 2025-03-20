@@ -327,7 +327,7 @@ class Logger(metaclass=Singleton):
         """Get whether logging to file is enabled."""
         return self._usefile
 
-    @usefile.setter  # type: ignore[attr-defined, no-redef]
+    @usefile.setter
     def usefile(self, val: bool) -> None:
         """Set whether logging to file is enabled."""
         # Could perform some sanity check here
@@ -338,7 +338,7 @@ class Logger(metaclass=Singleton):
         """Get whether logging to stdout is enabled."""
         return self._useconsole
 
-    @useconsole.setter  # type: ignore[attr-defined, no-redef]
+    @useconsole.setter
     def useconsole(self, val: bool) -> None:
         """Set whether logging to stdout is enabled."""
         # Could perform some sanity check here
@@ -349,7 +349,7 @@ class Logger(metaclass=Singleton):
         """Get whether colored output is enabled."""
         return self._usecolor
 
-    @usecolor.setter  # type: ignore[attr-defined, no-redef]
+    @usecolor.setter
     def usecolor(self, val: bool) -> None:
         """Set whether colored output is enabled."""
         # Could perform some sanity check here
@@ -360,7 +360,7 @@ class Logger(metaclass=Singleton):
         """Get the current logging level."""
         return self._level
 
-    @level.setter  # type: ignore[attr-defined, no-redef]
+    @level.setter
     def level(self, val: Union[int, str]) -> None:
         """Set the logging level."""
         # Could perform some sanity check here
@@ -386,7 +386,7 @@ class Logger(metaclass=Singleton):
         """Get the current log message format."""
         return self._logformat
 
-    @logformat.setter  # type: ignore[attr-defined, no-redef]
+    @logformat.setter
     def logformat(self, val: str) -> None:
         """Set the log message format."""
         # Could perform some sanity check here
@@ -397,7 +397,7 @@ class Logger(metaclass=Singleton):
         """Get the current log directory."""
         return self._logdir
 
-    @logdir.setter  # type: ignore[attr-defined, no-redef]
+    @logdir.setter
     def logdir(self, val: str) -> None:
         """Set the log directory path."""
         # Get rid of trailing slash
@@ -410,7 +410,7 @@ class Logger(metaclass=Singleton):
         """Get the current log file basename."""
         return self._logfbasename
 
-    @logfbasename.setter  # type: ignore[attr-defined, no-redef]
+    @logfbasename.setter
     def logfbasename(self, val: str) -> None:
         """Set the log file basename."""
         # Could perform some sanity check here
@@ -421,7 +421,7 @@ class Logger(metaclass=Singleton):
         """Get the current log file extension."""
         return self._logext
 
-    @logext.setter  # type: ignore[attr-defined, no-redef]
+    @logext.setter
     def logext(self, val: str) -> None:
         """Set the log file extension."""
         # Could perform some sanity check here
@@ -432,7 +432,7 @@ class Logger(metaclass=Singleton):
         """Get the current max size of the rotation buffer."""
         return self._rotmaxbytes
 
-    @rotmaxbytes.setter  # type: ignore[attr-defined, no-redef]
+    @rotmaxbytes.setter
     def rotmaxbytes(self, val: Union[int, str]) -> None:
         """Set the max size of the rotation buffer in bytes.
 
@@ -456,7 +456,7 @@ class Logger(metaclass=Singleton):
         """Get the current number of rotation buffers."""
         return self._rotmaxcount
 
-    @rotmaxcount.setter  # type: ignore[attr-defined, no-redef]
+    @rotmaxcount.setter
     def rotmaxcount(self, val: int) -> None:
         """Set the number of rotation buffers."""
         # Could perform some sanity check here
