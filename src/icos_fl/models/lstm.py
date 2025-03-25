@@ -19,7 +19,6 @@ class LSTMModel(nn.Module):
         hidden_layer_size: Size of the LSTM hidden layer
         time_step: Number of time steps (sequence length) for LSTM input
         num_layers: Number of LSTM layers
-        metric: The metric being predicted (e.g., 'cpu_consumption')
         output_size: Size of the output layer (default is 1 for single value prediction)
     """
 
@@ -28,7 +27,6 @@ class LSTMModel(nn.Module):
         hidden_layer_size: int,
         time_step: int,
         num_layers: int,
-        metric: str,
         output_size: int = 1,
     ) -> None:
         """Initialize the LSTM model."""
@@ -37,7 +35,6 @@ class LSTMModel(nn.Module):
         self.hidden_layer_size = hidden_layer_size
         self.time_step = time_step
         self.num_layers = num_layers
-        self.metric = metric
 
         # LSTM layer
         self.lstm = nn.LSTM(time_step, hidden_layer_size, num_layers, batch_first=True)

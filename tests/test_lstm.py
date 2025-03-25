@@ -84,19 +84,17 @@ def initialize_models() -> None:
     log.info("")
 
     # Create a model with default output size
-    model1 = LSTMModel(hidden_layer_size=10, time_step=10, num_layers=1, metric="cpu_consumption")
+    model1 = LSTMModel(hidden_layer_size=10, time_step=10, num_layers=1)
 
     log.info(paint(BYEL, "▶ Model 1 Configuration:"))
 
     hidden_size_msg = f"  • Hidden layer size: {paint(WHT, str(model1.hidden_layer_size))}"
     time_step_msg = f"  • Time step: {paint(WHT, str(model1.time_step))}"
     num_layers_msg = f"  • Number of layers: {paint(WHT, str(model1.num_layers))}"
-    metric_msg = f"  • Metric: {paint(WHT, model1.metric)}"
 
     log.info(hidden_size_msg)
     log.info(time_step_msg)
     log.info(num_layers_msg)
-    log.info(metric_msg)
     log.info("")
 
     # Create a model with custom output size
@@ -104,7 +102,6 @@ def initialize_models() -> None:
         hidden_layer_size=20,
         time_step=15,
         num_layers=2,
-        metric="memory_consumption",
         output_size=2,
     )
 
@@ -113,13 +110,11 @@ def initialize_models() -> None:
     m2_hidden_size_msg = f"  • Hidden layer size: {paint(WHT, str(model2.hidden_layer_size))}"
     m2_time_step_msg = f"  • Time step: {paint(WHT, str(model2.time_step))}"
     m2_num_layers_msg = f"  • Number of layers: {paint(WHT, str(model2.num_layers))}"
-    m2_metric_msg = f"  • Metric: {paint(WHT, model2.metric)}"
     m2_output_size_msg = f"  • Output size: {paint(WHT, str(model2.linear.out_features))}"
 
     log.info(m2_hidden_size_msg)
     log.info(m2_time_step_msg)
     log.info(m2_num_layers_msg)
-    log.info(m2_metric_msg)
     log.info(m2_output_size_msg)
     log.info("")
 
@@ -140,7 +135,6 @@ def check_model_structure() -> None:
         hidden_layer_size=hidden_size,
         time_step=time_step,
         num_layers=num_layers,
-        metric="cpu_consumption",
     )
 
     # Show LSTM parameters
@@ -173,9 +167,7 @@ def run_forward_pass() -> None:
     log.info(paint(BCYA, "╚══════════════════════════════╝"))
     log.info("")
 
-    model = LSTMModel(
-        hidden_layer_size=10, time_step=10, num_layers=1, metric="cpu_consumption"
-    ).to(DEVICE)
+    model = LSTMModel(hidden_layer_size=10, time_step=10, num_layers=1).to(DEVICE)
 
     # Create a batch of synthetic input data
     batch_size = 8
@@ -207,9 +199,9 @@ def transfer_model_weights() -> None:
     log.info("")
 
     # Create two models with the same architecture
-    model1 = LSTMModel(hidden_layer_size=10, time_step=10, num_layers=1, metric="cpu_consumption")
+    model1 = LSTMModel(hidden_layer_size=10, time_step=10, num_layers=1)
 
-    model2 = LSTMModel(hidden_layer_size=10, time_step=10, num_layers=1, metric="cpu_consumption")
+    model2 = LSTMModel(hidden_layer_size=10, time_step=10, num_layers=1)
 
     # Get initial weights
     weights1 = get_weights(model1)
@@ -269,9 +261,7 @@ def train_and_evaluate_model() -> None:
     log.info("")
 
     # Create a model
-    model = LSTMModel(
-        hidden_layer_size=10, time_step=10, num_layers=1, metric="cpu_consumption"
-    ).to(DEVICE)
+    model = LSTMModel(hidden_layer_size=10, time_step=10, num_layers=1).to(DEVICE)
 
     # Train for a few epochs
     epochs = 2
