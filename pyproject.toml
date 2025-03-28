@@ -16,6 +16,9 @@ dependencies = [
   "flwr[simulation]>=1.16.0",
   "torch==2.5.1",
   "wandb==0.17.8",
+  "pandas>=2.2.3",
+  "scikit-learn>=1.6.1",
+  "dataclay==4.0.0",
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
