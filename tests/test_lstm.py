@@ -14,7 +14,7 @@ import numpy as np
 import torch
 
 # Add source directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from icos_fl.models.lstm import LSTMModel, get_weights, set_weights, test, train
 from icos_fl.utils.colors import BCYA, BGRN, BMAG, BYEL, WHT, paint
 from icos_fl.utils.logger import Logger

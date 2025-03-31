@@ -77,7 +77,7 @@ all = [
 packages = ["."]
 
 [tool.coverage.paths]
-source = ["src", "*/site-packages"]
+source = ["icos_fl", "*/site-packages"]
 
 [tool.coverage.run]
 branch = true
@@ -184,8 +184,8 @@ warn_no_return = true
 publisher = "Anastasios Kaltakis"
 
 [tool.flwr.app.components]
-serverapp = "src.icos_fl.server.server:app"
-clientapp = "src.icos_fl.client.client:app"
+serverapp = "icos_fl.server.server:app"
+clientapp = "icos_fl.client.client:app"
 
 [tool.flwr.app.config]
 # Server configuration

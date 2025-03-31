@@ -7,7 +7,7 @@ import threading
 import time
 from typing import Any, Dict
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from icos_fl.utils.logger import Logger
 
 # We want to have logger as a module object accessible from all functions,

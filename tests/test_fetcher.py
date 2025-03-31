@@ -17,7 +17,7 @@ import torch
 from dataclay.exceptions import DataClayException
 
 # Add source directory to path BEFORE any relative imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from icos_fl.utils.colors import BCYA, BGRN, BMAG, BYEL, RED, WHT, paint, perror
 from icos_fl.utils.fetcher import Fetcher
