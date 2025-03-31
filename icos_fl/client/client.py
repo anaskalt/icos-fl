@@ -4,19 +4,19 @@ This module defines the client-side components of the federated learning system,
 including local model training and evaluation within the Flower framework.
 """
 
+import logging
+from logging import ERROR, INFO, WARN
 from typing import Any, Dict, List, Tuple, Union
 
 import torch
 from flwr.client import ClientApp, NumPyClient
-from flwr.common import Context, NDArrays, RecordSet
+from flwr.common import Context, NDArrays, RecordSet, logger
 
 from icos_fl.models.lstm import LSTMModel, get_weights, set_weights, test, train
 from icos_fl.utils.fetcher import Fetcher
-from icos_fl.utils.logger import Logger
 from icos_fl.utils.processor import Processor
 
-# Configure logger
-logger = Logger()
+logging.getLogger("flwr").propagate = False
 
 
 class IcosClient(NumPyClient):
@@ -63,8 +63,8 @@ class IcosClient(NumPyClient):
 
         init_message = f"Initialized ICOS Client {self.client_id} for metric {self.metric}"
         device_message = f"Using device: {self.device}"
-        logger.info(init_message)
-        logger.info(device_message)
+        logger.log(INFO, init_message)
+        logger.log(INFO, device_message)
 
     def get_parameters(self, config: Dict[str, Any]) -> List[NDArrays]:
         """Get model parameters as a list of NumPy arrays.
@@ -104,7 +104,7 @@ class IcosClient(NumPyClient):
         lr = float(config.get("lr", 0.001))
 
         fit_start_msg = f"Client {self.client_id} starting fit() for round {server_round}"
-        logger.info(fit_start_msg)
+        logger.log(INFO, fit_start_msg)
 
         # Update local model with global parameters
         self.set_parameters(parameters)
@@ -117,8 +117,8 @@ class IcosClient(NumPyClient):
         # Log training completion
         fit_complete_msg = f"Client {self.client_id} completed fit() for round {server_round}"
         loss_msg = f"Training loss: {train_loss:.6f}"
-        logger.info(fit_complete_msg)
-        logger.info(loss_msg)
+        logger.log(INFO, fit_complete_msg)
+        logger.log(INFO, loss_msg)
 
         # Return updated model parameters and metrics
         return (
@@ -143,7 +143,7 @@ class IcosClient(NumPyClient):
         server_round = int(config.get("server_round", 1))
 
         eval_start_msg = f"Client {self.client_id} starting evaluate() for round {server_round}"
-        logger.info(eval_start_msg)
+        logger.log(INFO, eval_start_msg)
 
         # Update local model with global parameters
         self.set_parameters(parameters)
@@ -156,8 +156,8 @@ class IcosClient(NumPyClient):
             f"Client {self.client_id} completed evaluate() for round {server_round}"
         )
         val_loss_msg = f"Validation loss: {val_loss:.6f}"
-        logger.info(eval_complete_msg)
-        logger.info(val_loss_msg)
+        logger.log(INFO, eval_complete_msg)
+        logger.log(INFO, val_loss_msg)
 
         # Return evaluation metrics
         return (
@@ -222,20 +222,20 @@ def client_fn(context: Context) -> NumPyClient:
             # Create dataloaders
             train_dataloader, val_dataloader, _, _ = processor.create_data_loaders(df)
             success_msg = f"Client {client_id}: Successfully created data loaders for {metric}"
-            logger.info(success_msg)
+            logger.log(INFO, success_msg)
         else:
             no_data_msg = f"Client {client_id}: No data available for metric: {metric}"
-            logger.warning(no_data_msg)
+            logger.log(WARN, no_data_msg)
     except Exception as e:  # noqa: BLE001
         fetch_error_msg = f"Client {client_id}: Error fetching data - {e}"
-        logger.error(fetch_error_msg)
+        logger.log(ERROR, fetch_error_msg)
     finally:
         if fetcher is not None:
             try:
                 fetcher._disconnect()
             except Exception as e:  # noqa: BLE001
                 cleanup_error_msg = f"Error during Fetcher cleanup in client: {e}"
-                logger.warning(cleanup_error_msg)
+                logger.log(WARN, cleanup_error_msg)
 
     # Initialize model
     model = LSTMModel(

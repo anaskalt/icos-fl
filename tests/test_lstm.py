@@ -16,11 +16,7 @@ import torch
 # Add source directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from icos_fl.models.lstm import LSTMModel, get_weights, set_weights, test, train
-from icos_fl.utils.colors import BCYA, BGRN, BMAG, BYEL, WHT, paint
-from icos_fl.utils.logger import Logger
-
-# We want to have logger as a module object accessible from all functions
-log = None
+from icos_fl.utils.colors import BCYA, BGRN, BMAG, BYEL, RED, WHT, paint
 
 # Global device configuration
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -69,33 +65,33 @@ def create_dataloaders(
 
     train_msg = f"Created train dataloader with {paint(BGRN, str(len(train_dataset)))} samples"
     test_msg = f"Created test dataloader with {paint(BGRN, str(len(test_dataset)))} samples"
-    log.info(train_msg)
-    log.info(test_msg)
+    print(train_msg)
+    print(test_msg)
 
     return train_dataloader, test_dataloader
 
 
 def initialize_models() -> None:
     """Initialize LSTM models with different configurations."""
-    log.info("")
-    log.info(paint(BCYA, "╔══════════════════════════════╗"))
-    log.info(paint(BCYA, "║    Model Initialization      ║"))
-    log.info(paint(BCYA, "╚══════════════════════════════╝"))
-    log.info("")
+    print("")
+    print(paint(BCYA, "╔══════════════════════════════╗"))
+    print(paint(BCYA, "║    Model Initialization      ║"))
+    print(paint(BCYA, "╚══════════════════════════════╝"))
+    print("")
 
     # Create a model with default output size
     model1 = LSTMModel(hidden_layer_size=10, time_step=10, num_layers=1)
 
-    log.info(paint(BYEL, "▶ Model 1 Configuration:"))
+    print(paint(BYEL, "▶ Model 1 Configuration:"))
 
     hidden_size_msg = f"  • Hidden layer size: {paint(WHT, str(model1.hidden_layer_size))}"
     time_step_msg = f"  • Time step: {paint(WHT, str(model1.time_step))}"
     num_layers_msg = f"  • Number of layers: {paint(WHT, str(model1.num_layers))}"
 
-    log.info(hidden_size_msg)
-    log.info(time_step_msg)
-    log.info(num_layers_msg)
-    log.info("")
+    print(hidden_size_msg)
+    print(time_step_msg)
+    print(num_layers_msg)
+    print("")
 
     # Create a model with custom output size
     model2 = LSTMModel(
@@ -105,26 +101,26 @@ def initialize_models() -> None:
         output_size=2,
     )
 
-    log.info(paint(BYEL, "▶ Model 2 Configuration:"))
+    print(paint(BYEL, "▶ Model 2 Configuration:"))
 
     m2_hidden_size_msg = f"  • Hidden layer size: {paint(WHT, str(model2.hidden_layer_size))}"
     m2_time_step_msg = f"  • Time step: {paint(WHT, str(model2.time_step))}"
     m2_num_layers_msg = f"  • Number of layers: {paint(WHT, str(model2.num_layers))}"
     m2_output_size_msg = f"  • Output size: {paint(WHT, str(model2.linear.out_features))}"
 
-    log.info(m2_hidden_size_msg)
-    log.info(m2_time_step_msg)
-    log.info(m2_num_layers_msg)
-    log.info(m2_output_size_msg)
-    log.info("")
+    print(m2_hidden_size_msg)
+    print(m2_time_step_msg)
+    print(m2_num_layers_msg)
+    print(m2_output_size_msg)
+    print("")
 
 
 def check_model_structure() -> None:
     """Examine the internal structure of the LSTM model components."""
-    log.info(paint(BCYA, "╔══════════════════════════════╗"))
-    log.info(paint(BCYA, "║       Model Structure        ║"))
-    log.info(paint(BCYA, "╚══════════════════════════════╝"))
-    log.info("")
+    print(paint(BCYA, "╔══════════════════════════════╗"))
+    print(paint(BCYA, "║       Model Structure        ║"))
+    print(paint(BCYA, "╚══════════════════════════════╝"))
+    print("")
 
     # Create a model
     hidden_size = 20
@@ -138,34 +134,34 @@ def check_model_structure() -> None:
     )
 
     # Show LSTM parameters
-    log.info(paint(BYEL, "▶ LSTM Configuration:"))
+    print(paint(BYEL, "▶ LSTM Configuration:"))
 
     input_size_msg = f"  • Input size: {paint(WHT, str(model.lstm.input_size))}"
     hidden_size_msg = f"  • Hidden size: {paint(WHT, str(model.lstm.hidden_size))}"
     num_layers_msg = f"  • Number of layers: {paint(WHT, str(model.lstm.num_layers))}"
 
-    log.info(input_size_msg)
-    log.info(hidden_size_msg)
-    log.info(num_layers_msg)
-    log.info("")
+    print(input_size_msg)
+    print(hidden_size_msg)
+    print(num_layers_msg)
+    print("")
 
     # Show linear layer parameters
-    log.info(paint(BYEL, "▶ Linear Layer Configuration:"))
+    print(paint(BYEL, "▶ Linear Layer Configuration:"))
 
     in_features_msg = f"  • Input features: {paint(WHT, str(model.linear.in_features))}"
     out_features_msg = f"  • Output features: {paint(WHT, str(model.linear.out_features))}"
 
-    log.info(in_features_msg)
-    log.info(out_features_msg)
-    log.info("")
+    print(in_features_msg)
+    print(out_features_msg)
+    print("")
 
 
 def run_forward_pass() -> None:
     """Run a forward pass through the LSTM model with sample data."""
-    log.info(paint(BCYA, "╔══════════════════════════════╗"))
-    log.info(paint(BCYA, "║         Forward Pass         ║"))
-    log.info(paint(BCYA, "╚══════════════════════════════╝"))
-    log.info("")
+    print(paint(BCYA, "╔══════════════════════════════╗"))
+    print(paint(BCYA, "║         Forward Pass         ║"))
+    print(paint(BCYA, "╚══════════════════════════════╝"))
+    print("")
 
     model = LSTMModel(hidden_layer_size=10, time_step=10, num_layers=1).to(DEVICE)
 
@@ -174,29 +170,29 @@ def run_forward_pass() -> None:
     input_data = torch.randn(batch_size, 1, 10).to(DEVICE)
 
     input_shape_msg = f"Input data shape: {paint(WHT, str(input_data.shape))}"
-    log.info(input_shape_msg)
+    print(input_shape_msg)
 
     # Perform forward pass
     with torch.no_grad():
         output = model(input_data)
 
     output_shape_msg = f"Output data shape: {paint(WHT, str(output.shape))}"
-    log.info(output_shape_msg)
-    log.info(paint(BYEL, "▶ Output values (first 3 samples):"))
+    print(output_shape_msg)
+    print(paint(BYEL, "▶ Output values (first 3 samples):"))
 
     for i in range(min(3, batch_size)):
         sample_msg = f"  • Sample {i + 1}: {paint(BGRN, f'{output[i].item():.6f}')}"
-        log.info(sample_msg)
+        print(sample_msg)
 
-    log.info("")
+    print("")
 
 
 def transfer_model_weights() -> None:
     """Transfer weights between two LSTM model instances."""
-    log.info(paint(BCYA, "╔══════════════════════════════╗"))
-    log.info(paint(BCYA, "║       Weight Transfer        ║"))
-    log.info(paint(BCYA, "╚══════════════════════════════╝"))
-    log.info("")
+    print(paint(BCYA, "╔══════════════════════════════╗"))
+    print(paint(BCYA, "║       Weight Transfer        ║"))
+    print(paint(BCYA, "╚══════════════════════════════╝"))
+    print("")
 
     # Create two models with the same architecture
     model1 = LSTMModel(hidden_layer_size=10, time_step=10, num_layers=1)
@@ -207,7 +203,7 @@ def transfer_model_weights() -> None:
     weights1 = get_weights(model1)
     weights2 = get_weights(model2)
 
-    log.info(paint(BYEL, "▶ Initial weights comparison:"))
+    print(paint(BYEL, "▶ Initial weights comparison:"))
 
     for i, (w1, w2) in enumerate(zip(weights1, weights2, strict=False)):
         w1_sum = float(np.sum(w1))
@@ -219,18 +215,18 @@ def transfer_model_weights() -> None:
 
         # Compose the final message
         weights_msg = f"  • Layer {i + 1} weights sum - Model 1: {w1_fmt}, Model 2: {w2_fmt}"
-        log.info(weights_msg)
+        print(weights_msg)
 
     # Set model2's weights to model1's weights
-    log.info("")
-    log.info(paint(BMAG, "► Transferring weights from Model 1 to Model 2..."))
+    print("")
+    print(paint(BMAG, "► Transferring weights from Model 1 to Model 2..."))
     set_weights(model2, weights1)
 
     # Get updated weights
     weights2_updated = get_weights(model2)
 
-    log.info("")
-    log.info(paint(BYEL, "▶ Updated weights comparison:"))
+    print("")
+    print(paint(BYEL, "▶ Updated weights comparison:"))
 
     for i, (w1, w2) in enumerate(zip(weights1, weights2_updated, strict=False)):
         w1_sum = float(np.sum(w1))
@@ -244,28 +240,28 @@ def transfer_model_weights() -> None:
         updated_weights_msg = (
             f"  • Layer {i + 1} weights sum - Model 1: {w1_fmt}, Model 2: {w2_fmt}"
         )
-        log.info(updated_weights_msg)
+        print(updated_weights_msg)
 
-    log.info("")
+    print("")
 
 
 def train_and_evaluate_model() -> None:
     """Train and evaluate the LSTM model on synthetic data."""
-    log.info(paint(BCYA, "╔══════════════════════════════╗"))
-    log.info(paint(BCYA, "║  Model Training & Evaluation ║"))
-    log.info(paint(BCYA, "╚══════════════════════════════╝"))
-    log.info("")
+    print(paint(BCYA, "╔══════════════════════════════╗"))
+    print(paint(BCYA, "║  Model Training & Evaluation ║"))
+    print(paint(BCYA, "╚══════════════════════════════╝"))
+    print("")
 
     # Create dataloaders once
     train_dataloader, test_dataloader = create_dataloaders()
-    log.info("")
+    print("")
 
     # Create a model
     model = LSTMModel(hidden_layer_size=10, time_step=10, num_layers=1).to(DEVICE)
 
     # Train for a few epochs
     epochs = 2
-    log.info(paint(BMAG, f"► Training model for {epochs} epochs..."))
+    print(paint(BMAG, f"► Training model for {epochs} epochs..."))
 
     try:
         avg_loss = train(model=model, train_dataloader=train_dataloader, epochs=epochs, lr=0.01)
@@ -273,39 +269,33 @@ def train_and_evaluate_model() -> None:
         train_result_msg = (
             f"Training completed with average loss: {paint(BGRN, f'{avg_loss:.6f}')}"
         )
-        log.info(train_result_msg)
-        log.info("")
+        print(train_result_msg)
+        print("")
 
         # Evaluate the model
-        log.info(paint(BMAG, "► Evaluating model..."))
+        print(paint(BMAG, "► Evaluating model..."))
 
         test_loss = test(model=model, test_dataloader=test_dataloader, device=DEVICE)
 
         eval_result_msg = f"Evaluation completed with test loss: {paint(BGRN, f'{test_loss:.6f}')}"
-        log.info(eval_result_msg)
-        log.info("")
-    except Exception as e:
+        print(eval_result_msg)
+        print("")
+    except Exception as e:  # noqa: BLE001
         error_msg = f"Error during model training or evaluation: {e!s}"
-        log.exception(error_msg)
+        print(paint(RED, error_msg))
 
 
 def test_lstm() -> None:
     """Run all LSTM model tests."""
-    global log
-
-    # Initialize logger
-    log = Logger(useconsole=True, usecolor=True)
-    log.info(log.report())
-
     # Display header
-    log.info("")
-    log.info(paint(BCYA, "╔══════════════════════════════════════════════╗"))
-    log.info(paint(BCYA, "║              LSTM MODEL TESTING              ║"))
-    log.info(paint(BCYA, "╚══════════════════════════════════════════════╝"))
-    log.info("")
+    print("")
+    print(paint(BCYA, "╔══════════════════════════════════════════════╗"))
+    print(paint(BCYA, "║              LSTM MODEL TESTING              ║"))
+    print(paint(BCYA, "╚══════════════════════════════════════════════╝"))
+    print("")
 
     device_msg = f"Using device: {paint(BGRN, str(DEVICE))}"
-    log.info(device_msg)
+    print(device_msg)
 
     # Run test functions
     try:
@@ -316,13 +306,13 @@ def test_lstm() -> None:
         train_and_evaluate_model()
 
         # Display footer
-        log.info(paint(BCYA, "╔══════════════════════════════════════════════╗"))
-        log.info(paint(BCYA, "║          LSTM MODEL TESTING COMPLETE         ║"))
-        log.info(paint(BCYA, "╚══════════════════════════════════════════════╝"))
-        log.info("")
-    except Exception as e:
+        print(paint(BCYA, "╔══════════════════════════════════════════════╗"))
+        print(paint(BCYA, "║          LSTM MODEL TESTING COMPLETE         ║"))
+        print(paint(BCYA, "╚══════════════════════════════════════════════╝"))
+        print("")
+    except Exception as e:  # noqa: BLE001
         error_msg = f"An error occurred during LSTM testing: {e!s}"
-        log.exception(error_msg)
+        print(paint(RED, error_msg))
 
 
 if __name__ == "__main__":

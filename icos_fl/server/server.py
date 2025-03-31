@@ -5,12 +5,21 @@ initializing and configuring the Flower ServerApp with appropriate strategy
 for centralized model aggregation and evaluation.
 """
 
+import logging
 import os
+from logging import CRITICAL, INFO, WARN
 from typing import Callable, Dict, Optional, Tuple
 
 import torch
 from dataclay.exceptions import DataClayException
-from flwr.common import Context, NDArrays, Scalar, ndarrays_to_parameters, parameters_to_ndarrays
+from flwr.common import (
+    Context,
+    NDArrays,
+    Scalar,
+    logger,
+    ndarrays_to_parameters,
+    parameters_to_ndarrays,
+)
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
 
 from icos_fl.models.lstm import LSTMModel, get_weights, set_weights, test
@@ -20,11 +29,10 @@ from icos_fl.server.strategy import (
     train_metrics_aggregation,
 )
 from icos_fl.utils.fetcher import Fetcher
-from icos_fl.utils.logger import Logger
 from icos_fl.utils.processor import Processor
 
-# Configure logger
-logger = Logger()
+logging.getLogger("flwr").propagate = False
+
 fetcher = Fetcher()
 
 
@@ -54,7 +62,7 @@ def gen_evaluate_fn(
     ) -> Optional[Tuple[float, Dict[str, Scalar]]]:
         """Evaluate global model on centralized test set."""
         eval_msg = f"Running centralized evaluation for round {server_round}"
-        logger.info(eval_msg)
+        logger.log(INFO, eval_msg)
 
         try:
             # Set the model weights
@@ -68,12 +76,12 @@ def gen_evaluate_fn(
                 df = fetcher.fetch_data(timeout=60)
             except Exception as e:  # noqa: BLE001
                 error_msg = f"Error fetching data: {e}"
-                logger.error(error_msg)
+                logger.log(CRITICAL, error_msg)
                 return None
 
             if df is None or len(df) == 0:
                 no_data_msg = "No data available for centralized evaluation"
-                logger.warning(no_data_msg)
+                logger.log(WARN, no_data_msg)
                 return None
 
             # Create processor for data preparation
@@ -89,23 +97,23 @@ def gen_evaluate_fn(
             val_loss = test(model, val_dataloader, device)
 
             eval_result_msg = f"Centralized evaluation loss: {val_loss:.6f}"
-            logger.info(eval_result_msg)
+            logger.log(INFO, eval_result_msg)
 
             return val_loss, {"centralized_loss": val_loss}
         except DataClayException as e:
             # Handle specific exceptions from DataClay
             error_msg = f"DataClay error during centralized evaluation: {e}"
-            logger.error(error_msg)
+            logger.log(CRITICAL, error_msg)
             return None
         except TimeoutError as e:
             # Handle timeout errors
             timeout_msg = f"Timeout during centralized evaluation: {e}"
-            logger.error(timeout_msg)
+            logger.log(CRITICAL, timeout_msg)
             return None
         except Exception as e:  # noqa: BLE001
             # Handle any other exceptions
             error_msg = f"Unexpected error during centralized evaluation: {e}"
-            logger.error(error_msg)
+            logger.log(CRITICAL, error_msg)
             return None
 
     return evaluate
@@ -211,11 +219,11 @@ def server_fn(context: Context) -> ServerAppComponents:
     )
     save_msg = f"Model saved to: {save_dir}"
 
-    logger.info(start_msg)
-    logger.info(rounds_msg)
-    logger.info(fraction_msg)
-    logger.info(clients_msg)
-    logger.info(save_msg)
+    logger.log(INFO, start_msg)
+    logger.log(INFO, rounds_msg)
+    logger.log(INFO, fraction_msg)
+    logger.log(INFO, clients_msg)
+    logger.log(INFO, save_msg)
 
     return ServerAppComponents(strategy=strategy, config=config)
 

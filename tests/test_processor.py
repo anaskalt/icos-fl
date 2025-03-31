@@ -14,12 +14,8 @@ import torch
 
 # Add source directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from icos_fl.utils.colors import BCYA, BGRN, BMAG, BYEL, WHT, paint
-from icos_fl.utils.logger import Logger
+from icos_fl.utils.colors import BCYA, BGRN, BMAG, BYEL, RED, WHT, paint
 from icos_fl.utils.processor import Processor, TimeSeriesDataset
-
-# We want to have logger as a module object accessible from all functions
-log = None
 
 # Global device configuration
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -76,25 +72,25 @@ def create_synthetic_data(rows: int = 100, cols: int = 3) -> pd.DataFrame:
     cols_msg = f"Columns: {paint(WHT, ', '.join(df.columns))}"
     range_msg = f"Data range: {paint(WHT, str(df.index[0]))} to {paint(WHT, str(df.index[-1]))}"
 
-    log.info(rows_msg)
-    log.info(cols_msg)
-    log.info(range_msg)
+    print(rows_msg)
+    print(cols_msg)
+    print(range_msg)
 
     return df
 
 
 def initialize_processor() -> None:
     """Initialize a Processor instance and validate its configuration."""
-    log.info("")
-    log.info(paint(BCYA, "╔══════════════════════════════╗"))
-    log.info(paint(BCYA, "║    Processor Initialization  ║"))
-    log.info(paint(BCYA, "╚══════════════════════════════╝"))
-    log.info("")
+    print("")
+    print(paint(BCYA, "╔══════════════════════════════╗"))
+    print(paint(BCYA, "║    Processor Initialization  ║"))
+    print(paint(BCYA, "╚══════════════════════════════╝"))
+    print("")
 
     # Initialize with default parameters
     processor1 = Processor(time_step=10, metric="cpu_consumption")
 
-    log.info(paint(BYEL, "▶ Processor 1 Configuration:"))
+    print(paint(BYEL, "▶ Processor 1 Configuration:"))
 
     p1_step = f"  • Time step: {paint(WHT, str(processor1.time_step))}"
     p1_metric = f"  • Metric: {paint(WHT, processor1.metric)}"
@@ -102,19 +98,19 @@ def initialize_processor() -> None:
     p1_ratio = f"  • Train ratio: {paint(WHT, str(processor1.train_ratio))}"
     p1_device = f"  • Device: {paint(WHT, str(processor1.device))}"
 
-    log.info(p1_step)
-    log.info(p1_metric)
-    log.info(p1_batch)
-    log.info(p1_ratio)
-    log.info(p1_device)
+    print(p1_step)
+    print(p1_metric)
+    print(p1_batch)
+    print(p1_ratio)
+    print(p1_device)
 
     # Initialize with custom parameters
     processor2 = Processor(
         time_step=15, metric="memory_consumption", batch_size=32, train_ratio=0.75, device=DEVICE
     )
 
-    log.info("")
-    log.info(paint(BYEL, "▶ Processor 2 Configuration:"))
+    print("")
+    print(paint(BYEL, "▶ Processor 2 Configuration:"))
 
     p2_step = f"  • Time step: {paint(WHT, str(processor2.time_step))}"
     p2_metric = f"  • Metric: {paint(WHT, processor2.metric)}"
@@ -122,20 +118,20 @@ def initialize_processor() -> None:
     p2_ratio = f"  • Train ratio: {paint(WHT, str(processor2.train_ratio))}"
     p2_device = f"  • Device: {paint(WHT, str(processor2.device))}"
 
-    log.info(p2_step)
-    log.info(p2_metric)
-    log.info(p2_batch)
-    log.info(p2_ratio)
-    log.info(p2_device)
-    log.info("")
+    print(p2_step)
+    print(p2_metric)
+    print(p2_batch)
+    print(p2_ratio)
+    print(p2_device)
+    print("")
 
 
 def test_data_normalization() -> None:
     """Test the data normalization functionality."""
-    log.info(paint(BCYA, "╔══════════════════════════════╗"))
-    log.info(paint(BCYA, "║      Data Normalization      ║"))
-    log.info(paint(BCYA, "╚══════════════════════════════╝"))
-    log.info("")
+    print(paint(BCYA, "╔══════════════════════════════╗"))
+    print(paint(BCYA, "║      Data Normalization      ║"))
+    print(paint(BCYA, "╚══════════════════════════════╝"))
+    print("")
 
     # Create test data
     df = create_synthetic_data(rows=100)
@@ -147,38 +143,38 @@ def test_data_normalization() -> None:
     normalized_df = processor._normalize_data(df)
 
     # Check statistics of original data
-    log.info(paint(BYEL, "▶ Original Data Statistics:"))
+    print(paint(BYEL, "▶ Original Data Statistics:"))
 
     for col in df.columns:
         mean_val = df[col].mean()
         std_val = df[col].std()
         stat_msg = f"  • {paint(WHT, col)}: mean={paint(BGRN, f'{mean_val:.4f}')}, "
         stat_msg += f"std={paint(BGRN, f'{std_val:.4f}')}"
-        log.info(stat_msg)
+        print(stat_msg)
 
-    log.info("")
+    print("")
 
     # Check statistics of normalized data
-    log.info(paint(BYEL, "▶ Normalized Data Statistics:"))
+    print(paint(BYEL, "▶ Normalized Data Statistics:"))
 
     for col in normalized_df.columns:
         mean_val = normalized_df[col].mean()
         std_val = normalized_df[col].std()
         norm_msg = f"  • {paint(WHT, col)}: mean={paint(BGRN, f'{mean_val:.4f}')}, "
         norm_msg += f"std={paint(BGRN, f'{std_val:.4f}')}"
-        log.info(norm_msg)
+        print(norm_msg)
 
-    log.info("")
-    log.info(paint(BMAG, "► Normalization should result in mean ≈ 0 and std ≈ 1 for each column"))
-    log.info("")
+    print("")
+    print(paint(BMAG, "► Normalization should result in mean ≈ 0 and std ≈ 1 for each column"))
+    print("")
 
 
 def test_train_test_split() -> None:
     """Test the train/test splitting functionality."""
-    log.info(paint(BCYA, "╔══════════════════════════════╗"))
-    log.info(paint(BCYA, "║      Train/Test Splitting    ║"))
-    log.info(paint(BCYA, "╚══════════════════════════════╝"))
-    log.info("")
+    print(paint(BCYA, "╔══════════════════════════════╗"))
+    print(paint(BCYA, "║      Train/Test Splitting    ║"))
+    print(paint(BCYA, "╚══════════════════════════════╝"))
+    print("")
 
     # Create test data
     df = create_synthetic_data(rows=100)
@@ -193,30 +189,30 @@ def test_train_test_split() -> None:
         train_size, test_size = processor._train_test_split(df, ratio)
 
         ratio_title = f"▶ Split Ratio: {paint(BGRN, str(ratio))}"
-        log.info(paint(BYEL, ratio_title))
+        print(paint(BYEL, ratio_title))
 
         dataset_size = f"  • Dataset size: {paint(WHT, str(len(df)))}"
-        log.info(dataset_size)
+        print(dataset_size)
 
         train_pct = train_size / len(df) * 100
         train_msg = f"  • Training set size: {paint(BGRN, str(train_size))} "
         train_msg += f"({paint(WHT, f'{train_pct:.1f}')}%)"
-        log.info(train_msg)
+        print(train_msg)
 
         test_pct = test_size / len(df) * 100
         test_msg = f"  • Test set size: {paint(BGRN, str(test_size))} "
         test_msg += f"({paint(WHT, f'{test_pct:.1f}')}%)"
-        log.info(test_msg)
+        print(test_msg)
 
-        log.info("")
+        print("")
 
 
 def test_time_series_dataset() -> None:
     """Test the TimeSeriesDataset class."""
-    log.info(paint(BCYA, "╔══════════════════════════════╗"))
-    log.info(paint(BCYA, "║     TimeSeriesDataset        ║"))
-    log.info(paint(BCYA, "╚══════════════════════════════╝"))
-    log.info("")
+    print(paint(BCYA, "╔══════════════════════════════╗"))
+    print(paint(BCYA, "║     TimeSeriesDataset        ║"))
+    print(paint(BCYA, "╚══════════════════════════════╝"))
+    print("")
 
     # Create test data
     df = create_synthetic_data(rows=100)
@@ -239,43 +235,43 @@ def test_time_series_dataset() -> None:
     time_step_msg = f"  • Time step: {paint(WHT, str(dataset.time_step))}"
     metric_msg = f"  • Metric: {paint(WHT, dataset.metric)}"
 
-    log.info(dataset_msg)
-    log.info(time_step_msg)
-    log.info(metric_msg)
+    print(dataset_msg)
+    print(time_step_msg)
+    print(metric_msg)
 
     # Get a sample sequence
     sequence, target = dataset[0]
 
-    log.info("")
-    log.info(paint(BYEL, "▶ Sample Sequence and Target:"))
+    print("")
+    print(paint(BYEL, "▶ Sample Sequence and Target:"))
 
     seq_shape_msg = f"  • Sequence shape: {paint(WHT, str(sequence.shape))}"
     target_shape_msg = f"  • Target shape: {paint(WHT, str(target.shape))}"
 
-    log.info(seq_shape_msg)
-    log.info(target_shape_msg)
+    print(seq_shape_msg)
+    print(target_shape_msg)
 
     # Check sequence values (first 5)
-    log.info("")
-    log.info(paint(BYEL, "▶ First 5 Values of the Sequence:"))
+    print("")
+    print(paint(BYEL, "▶ First 5 Values of the Sequence:"))
 
     for i in range(min(5, dataset.time_step)):
         value = sequence[0][i].item()
         value_msg = f"  • Value {i + 1}: {paint(BGRN, f'{value:.4f}')}"
-        log.info(value_msg)
+        print(value_msg)
 
     target_value = target.item()
     target_msg = f"  • Target value: {paint(BGRN, f'{target_value:.4f}')}"
-    log.info(target_msg)
-    log.info("")
+    print(target_msg)
+    print("")
 
 
 def test_data_loader_creation() -> None:
     """Test the complete data loader creation pipeline."""
-    log.info(paint(BCYA, "╔══════════════════════════════╗"))
-    log.info(paint(BCYA, "║     DataLoader Creation      ║"))
-    log.info(paint(BCYA, "╚══════════════════════════════╝"))
-    log.info("")
+    print(paint(BCYA, "╔══════════════════════════════╗"))
+    print(paint(BCYA, "║     DataLoader Creation      ║"))
+    print(paint(BCYA, "╚══════════════════════════════╝"))
+    print("")
 
     # Create test data
     df = create_synthetic_data(rows=100)
@@ -290,39 +286,39 @@ def test_data_loader_creation() -> None:
         df
     )
 
-    log.info(paint(BMAG, "► DataLoaders created successfully"))
+    print(paint(BMAG, "► DataLoaders created successfully"))
 
     train_size_msg = f"  • Training set size: {paint(BGRN, str(len(train_dataset)))} sequences"
     val_size_msg = f"  • Validation set size: {paint(BGRN, str(len(val_dataset)))} sequences"
     train_batches_msg = f"  • Training batches: {paint(WHT, str(len(train_dataloader)))}"
     val_batches_msg = f"  • Validation batches: {paint(WHT, str(len(val_dataloader)))}"
 
-    log.info(train_size_msg)
-    log.info(val_size_msg)
-    log.info(train_batches_msg)
-    log.info(val_batches_msg)
+    print(train_size_msg)
+    print(val_size_msg)
+    print(train_batches_msg)
+    print(val_batches_msg)
 
     # Get a batch from the training loader
     for batch_inputs, batch_targets in train_dataloader:
-        log.info("")
-        log.info(paint(BYEL, "▶ Sample Training Batch:"))
+        print("")
+        print(paint(BYEL, "▶ Sample Training Batch:"))
 
         inputs_msg = f"  • Batch inputs shape: {paint(WHT, str(batch_inputs.shape))}"
         targets_msg = f"  • Batch targets shape: {paint(WHT, str(batch_targets.shape))}"
 
-        log.info(inputs_msg)
-        log.info(targets_msg)
+        print(inputs_msg)
+        print(targets_msg)
         break
 
     # Test with different parameters
-    log.info("")
-    log.info(paint(BMAG, "► Testing DataLoader creation with overridden parameters"))
+    print("")
+    print(paint(BMAG, "► Testing DataLoader creation with overridden parameters"))
 
     train_dataloader, val_dataloader, train_dataset, val_dataset = processor.create_data_loaders(
         df, time_step=15, metric="memory_consumption", batch_size=8, train_ratio=0.7
     )
 
-    log.info(paint(BYEL, "▶ DataLoaders created with custom parameters:"))
+    print(paint(BYEL, "▶ DataLoaders created with custom parameters:"))
 
     time_step_msg = f"  • Time step: {paint(WHT, '15')}"
     metric_msg = f"  • Metric: {paint(WHT, 'memory_consumption')}"
@@ -331,32 +327,26 @@ def test_data_loader_creation() -> None:
     train_size_msg = f"  • Training set size: {paint(BGRN, str(len(train_dataset)))} sequences"
     val_size_msg = f"  • Validation set size: {paint(BGRN, str(len(val_dataset)))} sequences"
 
-    log.info(time_step_msg)
-    log.info(metric_msg)
-    log.info(batch_size_msg)
-    log.info(ratio_msg)
-    log.info(train_size_msg)
-    log.info(val_size_msg)
-    log.info("")
+    print(time_step_msg)
+    print(metric_msg)
+    print(batch_size_msg)
+    print(ratio_msg)
+    print(train_size_msg)
+    print(val_size_msg)
+    print("")
 
 
 def test_processor() -> None:
     """Run all Processor and TimeSeriesDataset tests."""
-    global log
-
-    # Initialize logger
-    log = Logger(useconsole=True, usecolor=True)
-    log.info(log.report())
-
     # Display header
-    log.info("")
-    log.info(paint(BCYA, "╔══════════════════════════════════════════════╗"))
-    log.info(paint(BCYA, "║         PROCESSOR MODULE TESTING             ║"))
-    log.info(paint(BCYA, "╚══════════════════════════════════════════════╝"))
-    log.info("")
+    print("")
+    print(paint(BCYA, "╔══════════════════════════════════════════════╗"))
+    print(paint(BCYA, "║         PROCESSOR MODULE TESTING             ║"))
+    print(paint(BCYA, "╚══════════════════════════════════════════════╝"))
+    print("")
 
     device_msg = f"Using device: {paint(BGRN, str(DEVICE))}"
-    log.info(device_msg)
+    print(device_msg)
 
     # Run test functions
     try:
@@ -367,13 +357,13 @@ def test_processor() -> None:
         test_data_loader_creation()
 
         # Display footer
-        log.info(paint(BCYA, "╔══════════════════════════════════════════════╗"))
-        log.info(paint(BCYA, "║       PROCESSOR MODULE TESTING COMPLETE      ║"))
-        log.info(paint(BCYA, "╚══════════════════════════════════════════════╝"))
-        log.info("")
-    except Exception as e:
+        print(paint(BCYA, "╔══════════════════════════════════════════════╗"))
+        print(paint(BCYA, "║       PROCESSOR MODULE TESTING COMPLETE      ║"))
+        print(paint(BCYA, "╚══════════════════════════════════════════════╝"))
+        print("")
+    except Exception as e:  # noqa: BLE001
         error_msg = f"An error occurred during Processor testing: {e!s}"
-        log.exception(error_msg)
+        print(paint(RED, error_msg))
 
 
 if __name__ == "__main__":

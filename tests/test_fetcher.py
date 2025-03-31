@@ -5,11 +5,9 @@ to DataClay and retrieving time series data, along with the TimeSeriesData
 class for managing sliding window time series data.
 """
 
-import logging
 import os
 import sys
 import time
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -19,12 +17,9 @@ from dataclay.exceptions import DataClayException
 # Add source directory to path BEFORE any relative imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from icos_fl.utils.colors import BCYA, BGRN, BMAG, BYEL, RED, WHT, paint, perror
+from icos_fl.utils.colors import BCYA, BGRN, BMAG, BYEL, RED, WHT, paint
 from icos_fl.utils.fetcher import Fetcher
 from icos_fl.utils.processor import Processor
-
-# Suppress warnings
-warnings.filterwarnings("ignore", category=UserWarning)
 
 # Global fetcher to avoid multiple DataClay connections
 global_fetcher = None
@@ -594,9 +589,6 @@ def test_fetcher() -> None:
     """Run all Fetcher and TimeSeriesData tests."""
     global global_fetcher
 
-    # Disable all logging from DataClay and other sources
-    logging.getLogger().setLevel(logging.CRITICAL)
-
     # Print the custom header
     print_test_header()
 
@@ -627,7 +619,7 @@ def test_fetcher() -> None:
     except (RuntimeError, ConnectionError, DataClayException) as e:
         # Be specific about which exceptions to catch
         error_msg = f"An error occurred during Fetcher testing: {e!s}"
-        perror(error_msg)
+        print(paint(RED, error_msg))
 
         # Ensure we disconnect even if there's an error
         if global_fetcher and global_fetcher.client:
@@ -641,7 +633,4 @@ def test_fetcher() -> None:
 
 
 if __name__ == "__main__":
-    # Suppress warnings before anything else
-    warnings.filterwarnings("ignore")
-
     test_fetcher()

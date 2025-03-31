@@ -5,20 +5,20 @@ including model update aggregation, metrics tracking, and checkpoint
 management.
 """
 
+import logging
 import os
+from logging import INFO
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
-from flwr.common import FitRes, Metrics, Parameters, Scalar, parameters_to_ndarrays
+from flwr.common import FitRes, Metrics, Parameters, Scalar, logger, parameters_to_ndarrays
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy import FedAvg
 
 import wandb
 from icos_fl.models.lstm import LSTMModel, set_weights
-from icos_fl.utils.logger import Logger
 
-# Configure logger
-logger = Logger()
+logging.getLogger("flwr").propagate = False
 
 
 class CustomFedAvg(FedAvg):
@@ -69,8 +69,8 @@ class CustomFedAvg(FedAvg):
 
         init_msg = f"Initialized CustomFedAvg strategy for metric {metric}"
         save_msg = f"Saving models to {save_dir}"
-        logger.info(init_msg)
-        logger.info(save_msg)
+        logger.log(INFO, init_msg)
+        logger.log(INFO, save_msg)
 
     def _init_wandb(self) -> None:
         """Initialize Weights & Biases project."""
@@ -94,7 +94,7 @@ class CustomFedAvg(FedAvg):
         """
         # Log round information
         agg_msg = f"Aggregating updates from {len(results)} clients for round {server_round}"
-        logger.info(agg_msg)
+        logger.log(INFO, agg_msg)
 
         # Call the parent class's aggregate_fit method
         aggregated_parameters, aggregated_metrics = super().aggregate_fit(
@@ -163,7 +163,7 @@ class CustomFedAvg(FedAvg):
                 torch.save(self.model.state_dict(), best_path)
 
                 best_msg = f"New best model saved with loss: {aggregated_loss:.6f}"
-                logger.info(best_msg)
+                logger.log(INFO, best_msg)
 
         return aggregated_loss, aggregated_metrics
 

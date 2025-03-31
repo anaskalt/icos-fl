@@ -102,7 +102,7 @@ class Fetcher(metaclass=Singleton):
         dataset: Dataset name to connect to
     """
 
-    def __init__(self, proxy_host: str = "127.0.0.1", dataset: str = "admin") -> None:
+    def __init__(self, proxy_host: str = "38.109.228.122", dataset: str = "admin") -> None:
         """Initialize the Fetcher with DataClay connection parameters.
 
         Args:
