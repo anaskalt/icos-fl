@@ -9,11 +9,11 @@ import os
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
-import wandb
 from flwr.common import FitRes, Metrics, Parameters, Scalar, parameters_to_ndarrays
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy import FedAvg
 
+import wandb
 from icos_fl.models.lstm import LSTMModel, set_weights
 from icos_fl.utils.logger import Logger
 
@@ -74,7 +74,7 @@ class CustomFedAvg(FedAvg):
 
     def _init_wandb(self) -> None:
         """Initialize Weights & Biases project."""
-        wandb.init(project="ICOS-FL", name=f"{self.metric}-ServerApp", config=self.run_config)
+        wandb.init(project="ICOS-FL", name=f"{self.metric}-ServerApp", config=self.run_config)  # type: ignore
 
     def aggregate_fit(
         self,
@@ -118,7 +118,7 @@ class CustomFedAvg(FedAvg):
 
             # Log metrics to WandB if enabled
             if self.use_wandb and "train_loss" in aggregated_metrics:
-                wandb.log({"train_loss": aggregated_metrics["train_loss"]}, step=server_round)
+                wandb.log({"train_loss": aggregated_metrics["train_loss"]}, step=server_round)  # type: ignore
 
         return aggregated_parameters, aggregated_metrics
 
@@ -152,7 +152,7 @@ class CustomFedAvg(FedAvg):
                 for key, value in aggregated_metrics.items():
                     metrics_dict[f"val_{key}"] = value
 
-            wandb.log(metrics_dict, step=server_round)
+            wandb.log(metrics_dict, step=server_round)  # type: ignore
 
             # Update best metrics if improved
             if aggregated_loss < self.best_metrics["loss"]:
@@ -185,11 +185,15 @@ class CustomFedAvg(FedAvg):
             return None
 
         eval_res = self.evaluate_fn(server_round, parameters, {})
+
+        if eval_res is None:
+            return None
+
         loss, metrics = eval_res
 
         # Log centralized evaluation metrics
         if self.use_wandb:
-            wandb.log(
+            wandb.log(  # type: ignore
                 {"centralized_loss": loss, **{f"centralized_{k}": v for k, v in metrics.items()}},
                 step=server_round,
             )
