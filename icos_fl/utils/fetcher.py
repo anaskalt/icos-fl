@@ -14,6 +14,8 @@ import pandas as pd
 from dataclay import Client, DataClayObject, activemethod
 from dataclay.exceptions import DataClayException
 
+from icos_fl.utils.singleton import Singleton
+
 
 class TimeSeriesData(DataClayObject):
     """Class for managing time series data with a sliding window approach.
@@ -88,7 +90,7 @@ class TimeSeriesData(DataClayObject):
         return self.dataframe
 
 
-class Fetcher:
+class Fetcher(metaclass=Singleton):
     """Fetcher for retrieving time series data from DataClay.
 
     This class handles connecting to DataClay, retrieving data through
@@ -100,7 +102,7 @@ class Fetcher:
         dataset: Dataset name to connect to
     """
 
-    def __init__(self, proxy_host: str = "67.220.67.180", dataset: str = "admin") -> None:
+    def __init__(self, proxy_host: str = "127.0.0.1", dataset: str = "admin") -> None:
         """Initialize the Fetcher with DataClay connection parameters.
 
         Args:
