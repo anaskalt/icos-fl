@@ -6,18 +6,14 @@ including local model training and evaluation within the Flower framework.
 
 from typing import Any, Dict, List, Tuple, Union
 
-import pandas as pd
 import torch
 from flwr.client import ClientApp, NumPyClient
 from flwr.common import Context, NDArrays, RecordSet
 
 from icos_fl.models.lstm import LSTMModel, get_weights, set_weights, test, train
+from icos_fl.utils.fetcher import Fetcher
 from icos_fl.utils.logger import Logger
 from icos_fl.utils.processor import Processor
-
-# TODO: Uncomment the following import when fetcher.py is available:
-# from icos_fl.utils.fetcher import Fetcher  # noqa: ERA001
-
 
 # Configure logger
 logger = Logger(useconsole=True, usecolor=True)
@@ -171,29 +167,6 @@ class IcosClient(NumPyClient):
         )
 
 
-def fetch_data(metric: str) -> pd.DataFrame:
-    """Temporary placeholder for fetcher.py functionality.
-
-    This function will be replaced with the actual implementation
-    when fetcher.py is available.
-
-    Args:
-        metric: The metric to fetch data for
-
-    Returns:
-        DataFrame with time series data for the requested metric
-    """
-    logger.warning(
-        "Using placeholder data fetching function. Replace with actual fetcher when available."
-    )
-
-    # In the actual implementation, this will call:
-    # return fetcher.fetch_data(metric)  # noqa: ERA001
-
-    # For now, return None to indicate that actual data fetching is not available
-    return None
-
-
 def client_fn(context: Context) -> NumPyClient:
     """Create and return a Flower client instance.
 
@@ -225,32 +198,44 @@ def client_fn(context: Context) -> NumPyClient:
     # Set device for computation
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # Fetch data
-    # TODO: This will be replaced with an actual call to fetcher.py when available
-    # df = fetcher.fetch_data(metric)  # noqa: ERA001
-    df = fetch_data(metric)
-
     # Initialize train and validation dataloaders
     train_dataloader = None
     val_dataloader = None
 
-    if df is not None:
-        # Create processor for data preparation
-        processor = Processor(
-            time_step=time_step,
-            metric=metric,
-            batch_size=batch_size,
-            train_ratio=train_test_split,
-            device=device,
-        )
+    fetcher = None
 
-        # Create dataloaders
-        train_dataloader, val_dataloader, _, _ = processor.create_data_loaders(df)
-        success_msg = f"Client {client_id}: Successfully created data loaders for {metric}"
-        logger.info(success_msg)
-    else:
-        no_data_msg = f"Client {client_id}: No data available - fetcher.py integration required"
-        logger.warning(no_data_msg)
+    try:
+        # Fetch data
+        fetcher = Fetcher()
+        df = fetcher.fetch_data(timeout=200)
+
+        if df is not None and len(df) > 0:
+            # Create processor for data preparation
+            processor = Processor(
+                time_step=time_step,
+                metric=metric,
+                batch_size=batch_size,
+                train_ratio=train_test_split,
+                device=device,
+            )
+
+            # Create dataloaders
+            train_dataloader, val_dataloader, _, _ = processor.create_data_loaders(df)
+            success_msg = f"Client {client_id}: Successfully created data loaders for {metric}"
+            logger.info(success_msg)
+        else:
+            no_data_msg = f"Client {client_id}: No data available for metric: {metric}"
+            logger.warning(no_data_msg)
+    except Exception as e:  # noqa: BLE001
+        fetch_error_msg = f"Client {client_id}: Error fetching data - {e}"
+        logger.error(fetch_error_msg)
+    finally:
+        if fetcher is not None:
+            try:
+                fetcher._disconnect()
+            except Exception as e:  # noqa: BLE001
+                cleanup_error_msg = f"Error during Fetcher cleanup in client: {e}"
+                logger.warning(cleanup_error_msg)
 
     # Initialize model
     model = LSTMModel(
@@ -266,7 +251,7 @@ def client_fn(context: Context) -> NumPyClient:
         valloader=val_dataloader,
         local_epochs=local_epochs,
         metric=metric,
-    )
+    ).to_client()
 
     return client
 
