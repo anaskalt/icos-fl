@@ -9,27 +9,27 @@ import os
 from typing import Callable, Dict, Optional, Tuple
 
 import torch
-from flwr.common import Context, NDArrays, Scalar, ndarrays_to_parameters
+from dataclay.exceptions import DataClayException
+from flwr.common import Context, NDArrays, Scalar, ndarrays_to_parameters, parameters_to_ndarrays
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
 
-from icos_fl.models.lstm import LSTMModel, get_weights, set_weights
+from icos_fl.models.lstm import LSTMModel, get_weights, set_weights, test
 from icos_fl.server.strategy import (
     CustomFedAvg,
     evaluate_metrics_aggregation,
     train_metrics_aggregation,
 )
+from icos_fl.utils.fetcher import Fetcher
 from icos_fl.utils.logger import Logger
-
-# TODO: Uncomment when fetcher.py is available:
-# from icos_fl.utils.fetcher import Fetcher  # noqa: ERA001
-
+from icos_fl.utils.processor import Processor
 
 # Configure logger
 logger = Logger(useconsole=True, usecolor=True)
+fetcher = Fetcher()
 
 
 def gen_evaluate_fn(
-    model: LSTMModel, metric: str, time_step: int, device: torch.device
+    model: LSTMModel, metric: str, time_step: int, batch_size: int, device: torch.device
 ) -> Callable[[int, NDArrays, Dict[str, Scalar]], Optional[Tuple[float, Dict[str, Scalar]]]]:
     """Generate a centralized evaluation function.
 
@@ -40,13 +40,13 @@ def gen_evaluate_fn(
         model: The LSTM model to evaluate
         metric: The metric being predicted
         time_step: Window size for time series prediction
+        batch_size: Batch size for data loaders
         device: Device to run evaluation on
 
     Returns:
         Function that takes (round, parameters, config) and returns (loss, metrics)
     """
 
-    # This function will be defined properly once fetcher.py is available
     def evaluate(
         server_round: int,
         parameters: NDArrays,
@@ -56,26 +56,80 @@ def gen_evaluate_fn(
         eval_msg = f"Running centralized evaluation for round {server_round}"
         logger.info(eval_msg)
 
-        # Set the model weights
-        ndarrays = ndarrays_to_parameters(parameters)
-        set_weights(model, ndarrays)
+        try:
+            # Set the model weights
+            model_params = parameters_to_ndarrays(parameters)
+            set_weights(model, model_params)
 
-        # TODO: Fetch test dataset using Fetcher when available
-        # df = Fetcher().fetch_data(metric)  # noqa: ERA001
+            df = None
 
-        # For now, we'll return placeholder values
-        logger.warning("Centralized evaluation not fully implemented - waiting for fetcher.py")
+            # Fetch test dataset using Fetcher
+            try:
+                df = fetcher.fetch_data(timeout=60)
+            except Exception as e:  # noqa: BLE001
+                error_msg = f"Error fetching data: {e}"
+                logger.error(error_msg)
+                return None
 
-        # This will be replaced with actual evaluation when the Fetcher is available:
-        # processor = Processor(time_step=time_step, metric=metric, device=device)  # noqa: ERA001
-        # _, val_dataloader, _, _ = processor.create_data_loaders(df)  # noqa: ERA001
-        # val_loss = test(model, val_dataloader, device)  # noqa: ERA001
-        # return val_loss, {"centralized_loss": val_loss}  # noqa: ERA001
+            if df is None or len(df) == 0:
+                no_data_msg = "No data available for centralized evaluation"
+                logger.warning(no_data_msg)
+                return None
 
-        # Return placeholder values for now
-        return 0.0, {"centralized_loss": 0.0}
+            # Create processor for data preparation
+            processor = Processor(time_step=time_step, metric=metric, device=device)
+
+            # Create dataloaders with emphasis on validation data
+            # Using a low train_ratio to prioritize evaluation data
+            _, val_dataloader, _, _ = processor.create_data_loaders(
+                df, train_ratio=0.2, batch_size=batch_size
+            )
+
+            # Evaluate the model
+            val_loss = test(model, val_dataloader, device)
+
+            eval_result_msg = f"Centralized evaluation loss: {val_loss:.6f}"
+            logger.info(eval_result_msg)
+
+            return val_loss, {"centralized_loss": val_loss}
+        except DataClayException as e:
+            # Handle specific exceptions from DataClay
+            error_msg = f"DataClay error during centralized evaluation: {e}"
+            logger.error(error_msg)
+            return None
+        except TimeoutError as e:
+            # Handle timeout errors
+            timeout_msg = f"Timeout during centralized evaluation: {e}"
+            logger.error(timeout_msg)
+            return None
+        except Exception as e:  # noqa: BLE001
+            # Handle any other exceptions
+            error_msg = f"Unexpected error during centralized evaluation: {e}"
+            logger.error(error_msg)
+            return None
 
     return evaluate
+
+
+def create_on_fit_config_fn(learning_rate: float) -> Callable[[int], Dict[str, Scalar]]:
+    """Create an on_fit_config function with the specified learning rate.
+
+    Args:
+        learning_rate: Learning rate to use in the config
+
+    Returns:
+        A function that creates client configs with this learning rate
+    """
+
+    def on_fit_config(server_round: int) -> Dict[str, Scalar]:
+        """Return training configuration dict for each round."""
+        config = {
+            "server_round": server_round,
+            "lr": learning_rate,
+        }
+        return config
+
+    return on_fit_config
 
 
 def server_fn(context: Context) -> ServerAppComponents:
@@ -98,7 +152,11 @@ def server_fn(context: Context) -> ServerAppComponents:
     min_evaluate_clients = int(context.run_config.get("min-evaluate-clients", 2))
     min_available_clients = int(context.run_config.get("min-available-clients", 2))
     metric = context.run_config.get("metric", "cpu_consumption")
+    batch_size = int(context.run_config.get("batch-size", 64))
     use_wandb = context.run_config.get("use-wandb", True)
+
+    learning_rate = float(context.run_config.get("learning-rate", 0.001))
+    on_fit_config_fn = create_on_fit_config_fn(learning_rate)
 
     # Create model parameters
     hidden_layer_size = int(context.run_config.get("hidden-layer-size", 10))
@@ -133,11 +191,11 @@ def server_fn(context: Context) -> ServerAppComponents:
         min_evaluate_clients=min_evaluate_clients,
         min_available_clients=min_available_clients,
         initial_parameters=initial_parameters,
+        on_fit_config_fn=on_fit_config_fn,
         fit_metrics_aggregation_fn=train_metrics_aggregation,
         evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation,
         # Centralized evaluation function
-        # Will be properly implemented once fetcher.py is available
-        evaluate_fn=gen_evaluate_fn(model, metric, time_step, device),
+        evaluate_fn=gen_evaluate_fn(model, metric, time_step, batch_size, device),
     )
 
     # Create server configuration
