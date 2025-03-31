@@ -9,16 +9,16 @@ import os
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
-import wandb
 from flwr.common import FitRes, Metrics, Parameters, Scalar, parameters_to_ndarrays
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy import FedAvg
 
+import wandb
 from icos_fl.models.lstm import LSTMModel, set_weights
 from icos_fl.utils.logger import Logger
 
 # Configure logger
-logger = Logger(useconsole=True, usecolor=True)
+logger = Logger()
 
 
 class CustomFedAvg(FedAvg):

@@ -16,7 +16,7 @@ from icos_fl.utils.logger import Logger
 from icos_fl.utils.processor import Processor
 
 # Configure logger
-logger = Logger(useconsole=True, usecolor=True)
+logger = Logger()
 
 
 class IcosClient(NumPyClient):
