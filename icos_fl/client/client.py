@@ -14,6 +14,7 @@ from flwr.common import Context, NDArrays, RecordSet, logger
 
 from icos_fl.models.lstm import LSTMModel, get_weights, set_weights, test, train
 from icos_fl.utils.fetcher import Fetcher
+from icos_fl.utils.logo import ROBOT_ICS, print_banner, print_client_banner
 from icos_fl.utils.processor import Processor
 
 logging.getLogger("flwr").propagate = False
@@ -61,9 +62,18 @@ class IcosClient(NumPyClient):
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
 
-        init_message = f"Initialized ICOS Client {self.client_id} for metric {self.metric}"
+        # Display client banner
+        print_client_banner()
+
+        # Display client initialization banner
+        print_banner(
+            logo=ROBOT_ICS,
+            title=f"  ICOS-FL CLIENT {self.client_id}",
+            message=f"  Working with metric: {self.metric}",
+            show_version=True,
+        )
+
         device_message = f"Using device: {self.device}"
-        logger.log(INFO, init_message)
         logger.log(INFO, device_message)
 
     def get_parameters(self, config: Dict[str, Any]) -> List[NDArrays]:

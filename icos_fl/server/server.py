@@ -29,9 +29,13 @@ from icos_fl.server.strategy import (
     train_metrics_aggregation,
 )
 from icos_fl.utils.fetcher import Fetcher
+from icos_fl.utils.logo import print_server_banner
 from icos_fl.utils.processor import Processor
 
 logging.getLogger("flwr").propagate = False
+
+# Display server banner
+print_server_banner()
 
 fetcher = Fetcher()
 

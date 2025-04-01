@@ -17,8 +17,11 @@ from flwr.server.strategy import FedAvg
 
 import wandb
 from icos_fl.models.lstm import LSTMModel, set_weights
+from icos_fl.utils.logo import NEURAL_NET, OBJECT2, print_banner, print_completion_banner
 
 logging.getLogger("flwr").propagate = False
+
+PROJECT_NAME = "ICOS-FL"
 
 
 class CustomFedAvg(FedAvg):
@@ -67,14 +70,20 @@ class CustomFedAvg(FedAvg):
         # Keep track of best metrics
         self.best_metrics = {"loss": float("inf")}
 
-        init_msg = f"Initialized CustomFedAvg strategy for metric {metric}"
+        # Display strategy initialization banner
+        print_banner(
+            logo=OBJECT2,
+            title="  ICOS-FL STRATEGY INITIALIZED",
+            message=f"  Federated Learning strategy for metric: {metric}",
+            show_version=False,
+        )
+
         save_msg = f"Saving models to {save_dir}"
-        logger.log(INFO, init_msg)
         logger.log(INFO, save_msg)
 
     def _init_wandb(self) -> None:
         """Initialize Weights & Biases project."""
-        wandb.init(project="ICOS-FL", name=f"{self.metric}-ServerApp", config=self.run_config)  # type: ignore
+        wandb.init(project=PROJECT_NAME, name=f"{self.metric}-ServerApp", config=self.run_config)  # type: ignore
 
     def aggregate_fit(
         self,
@@ -162,8 +171,13 @@ class CustomFedAvg(FedAvg):
                 best_path = os.path.join(self.save_dir, f"best_model_{self.metric}.pt")
                 torch.save(self.model.state_dict(), best_path)
 
-                best_msg = f"New best model saved with loss: {aggregated_loss:.6f}"
-                logger.log(INFO, best_msg)
+                # Show banner for best model
+                print_banner(
+                    logo=NEURAL_NET,
+                    title="  BEST MODEL SAVED",
+                    message=f"  New best model with loss: {aggregated_loss:.6f}",
+                    show_version=False,
+                )
 
         return aggregated_loss, aggregated_metrics
 
@@ -197,6 +211,12 @@ class CustomFedAvg(FedAvg):
                 {"centralized_loss": loss, **{f"centralized_{k}": v for k, v in metrics.items()}},
                 step=server_round,
             )
+
+        # Check if this is the final round
+        num_rounds = self.run_config.get("num-server-rounds", 10)
+        if server_round == num_rounds:
+            # This is the final round, show completion banner
+            print_completion_banner()
 
         return loss, metrics
 
