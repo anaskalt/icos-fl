@@ -100,10 +100,16 @@ def gen_evaluate_fn(
             # Evaluate the model
             val_loss = test(model, val_dataloader, device)
 
-            eval_result_msg = f"Centralized evaluation loss: {val_loss:.6f}"
+            # Calculate accuracy
+            accuracy = max(0.0, 1.0 - val_loss)
+
+            eval_result_msg = (
+                f"Centralized evaluation loss: {val_loss:.6f}, "
+                f"Centralized evaluation accuracy: {accuracy:.6f}"
+            )
             logger.log(INFO, eval_result_msg)
 
-            return val_loss, {"centralized_loss": val_loss}
+            return val_loss, {"centralized_accuracy": accuracy}
         except DataClayException as e:
             # Handle specific exceptions from DataClay
             error_msg = f"DataClay error during centralized evaluation: {e}"
@@ -142,6 +148,20 @@ def create_on_fit_config_fn(learning_rate: float) -> Callable[[int], Dict[str, S
         return config
 
     return on_fit_config
+
+
+def on_evaluate_config(server_round: int) -> Dict[str, Scalar]:
+    """Return evaluation configuration dict for each round.
+
+    Args:
+        server_round: Current federated learning round
+
+    Returns:
+        Configuration dictionary with server round
+    """
+    return {
+        "server_round": server_round,
+    }
 
 
 def server_fn(context: Context) -> ServerAppComponents:
@@ -204,6 +224,7 @@ def server_fn(context: Context) -> ServerAppComponents:
         min_available_clients=min_available_clients,
         initial_parameters=initial_parameters,
         on_fit_config_fn=on_fit_config_fn,
+        on_evaluate_config_fn=on_evaluate_config,
         fit_metrics_aggregation_fn=train_metrics_aggregation,
         evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation,
         # Centralized evaluation function

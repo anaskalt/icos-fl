@@ -85,6 +85,22 @@ class CustomFedAvg(FedAvg):
         """Initialize Weights & Biases project."""
         wandb.init(project=PROJECT_NAME, name=f"{self.metric}-ServerApp", config=self.run_config)  # type: ignore
 
+    def log_metrics(self, server_round: int, metrics_dict: Dict[str, Scalar]) -> None:
+        """Log metrics to Weights & Biases and optionally save them.
+
+        This helper method logs metrics to Weights & Biases with proper
+        formatting based on the metric type (training, evaluation, or centralized).
+
+        Args:
+            server_round: Current federated learning round
+            metrics_dict: Dictionary containing metrics to log
+        """
+        if not self.use_wandb:
+            return
+
+        # Log metrics to WandB with appropriate step
+        wandb.log(metrics_dict, step=server_round)  # type: ignore
+
     def aggregate_fit(
         self,
         server_round: int,
@@ -125,9 +141,16 @@ class CustomFedAvg(FedAvg):
             latest_path = os.path.join(self.save_dir, f"global_model_{self.metric}.pt")
             torch.save(self.model.state_dict(), latest_path)
 
-            # Log metrics to WandB if enabled
-            if self.use_wandb and "train_loss" in aggregated_metrics:
-                wandb.log({"train_loss": aggregated_metrics["train_loss"]}, step=server_round)  # type: ignore
+            # Prepare and log training metrics
+            training_metrics = {}
+            if "train_loss" in aggregated_metrics:
+                training_metrics["federated_training_loss"] = aggregated_metrics["train_loss"]
+                training_metrics["federated_training_accuracy"] = max(
+                    0.0, 1.0 - training_metrics["federated_training_loss"]
+                )
+
+            # Log training metrics to WandB
+            self.log_metrics(server_round, training_metrics)
 
         return aggregated_parameters, aggregated_metrics
 
@@ -152,16 +175,15 @@ class CustomFedAvg(FedAvg):
             server_round, results, failures
         )
 
-        # Log metrics to WandB if enabled
-        if self.use_wandb and aggregated_loss is not None:
-            metrics_dict = {"val_loss": aggregated_loss}
+        # Prepare evaluation metrics
+        if aggregated_loss is not None:
+            evaluation_metrics = {
+                "federated_evaluate_loss": aggregated_loss,
+                "federated_evaluate_accuracy": max(0.0, 1.0 - aggregated_loss),
+            }
 
-            # Add any additional metrics
-            if aggregated_metrics:
-                for key, value in aggregated_metrics.items():
-                    metrics_dict[f"val_{key}"] = value
-
-            wandb.log(metrics_dict, step=server_round)  # type: ignore
+            # Log evaluation metrics to WandB
+            self.log_metrics(server_round, evaluation_metrics)
 
             # Update best metrics if improved
             if aggregated_loss < self.best_metrics["loss"]:
@@ -205,12 +227,18 @@ class CustomFedAvg(FedAvg):
 
         loss, metrics = eval_res
 
-        # Log centralized evaluation metrics
-        if self.use_wandb:
-            wandb.log(  # type: ignore
-                {"centralized_loss": loss, **{f"centralized_{k}": v for k, v in metrics.items()}},
-                step=server_round,
-            )
+        # Prepare centralized metrics
+        centralized_metrics = {"centralized_loss": loss}
+
+        # Add centralized_accuracy
+        if "centralized_accuracy" in metrics:
+            centralized_metrics["centralized_accuracy"] = metrics["centralized_accuracy"]
+        else:
+            # Create a synthetic accuracy measure if not provided
+            centralized_metrics["centralized_accuracy"] = max(0.0, 1.0 - loss)
+
+        # Log centralized metrics
+        self.log_metrics(server_round, centralized_metrics)
 
         # Check if this is the final round
         num_rounds = self.run_config.get("num-server-rounds", 10)
@@ -232,16 +260,28 @@ def train_metrics_aggregation(metrics: List[Tuple[int, Metrics]]) -> Metrics:
     """
     # Extract relevant metrics
     client_metrics = []
+    client_accuracies = []
+
     for num_examples, metric_dict in metrics:
         if "train_loss" in metric_dict:
             client_metrics.append((num_examples, metric_dict["train_loss"]))
+            # Calculate accuracy from loss
+            accuracy = max(0.0, 1.0 - metric_dict["train_loss"])
+            client_accuracies.append((num_examples, accuracy))
 
     # Compute weighted average of the loss
     total_examples = sum(num_examples for num_examples, _ in client_metrics)
-    weighted_loss = sum(num_examples * loss for num_examples, loss in client_metrics)
 
-    # Return aggregated metrics
-    return {"train_loss": weighted_loss / total_examples if total_examples > 0 else 0}
+    if total_examples > 0:
+        weighted_loss = sum(num_examples * loss for num_examples, loss in client_metrics)
+        weighted_accuracy = sum(num_examples * acc for num_examples, acc in client_accuracies)
+
+        return {
+            "train_loss": weighted_loss / total_examples,
+            "train_accuracy": weighted_accuracy / total_examples,
+        }
+    else:
+        return {"train_loss": 0.0, "train_accuracy": 0.0}
 
 
 def evaluate_metrics_aggregation(metrics: List[Tuple[int, Metrics]]) -> Metrics:
@@ -255,19 +295,25 @@ def evaluate_metrics_aggregation(metrics: List[Tuple[int, Metrics]]) -> Metrics:
     """
     # Extract relevant metrics
     val_losses = []
+    val_accuracies = []
 
     for num_examples, metric_dict in metrics:
         if "val_loss" in metric_dict:
             val_losses.append((num_examples, metric_dict["val_loss"]))
+            # Calculate accuracy from loss
+            accuracy = max(0.0, 1.0 - metric_dict["val_loss"])
+            val_accuracies.append((num_examples, accuracy))
 
     # Compute weighted average
     total_examples = sum(num_examples for num_examples, _ in val_losses)
-    weighted_loss = sum(num_examples * loss for num_examples, loss in val_losses)
 
-    # Return aggregated metrics
     aggregated_metrics = {}
 
     if total_examples > 0:
+        weighted_loss = sum(num_examples * loss for num_examples, loss in val_losses)
+        weighted_accuracy = sum(num_examples * acc for num_examples, acc in val_accuracies)
+
         aggregated_metrics["val_loss"] = weighted_loss / total_examples
+        aggregated_metrics["accuracy"] = weighted_accuracy / total_examples
 
     return aggregated_metrics
