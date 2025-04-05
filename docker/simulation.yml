@@ -1,0 +1,72 @@
+# icos-fl/docker/simulation.yml
+# This file demonstrates how to deploy ICOS-FL components across multiple machines
+# while maintaining access to locally deployed DataClay services.
+
+services:
+  # CONTROLLER MACHINE COMPONENT
+  # In production, this would run on the ICOS controller machine
+  superlink:
+    build:
+      context: ..
+      dockerfile: docker/superlink.Dockerfile
+    network_mode: "host"  # Enables access to local DataClay via 127.0.0.1
+    volumes:
+      - ..:/app/model:rw  # To save model checkpoints to the host machine
+    command:
+      - --insecure
+
+  # NODE MACHINE COMPONENTS
+  # In production, each supernode would run on a separate ICOS node machine
+  # Here they're simulated in one compose file for demonstration
+
+  # First node machine
+  supernode-1:
+    build:
+      context: ..
+      dockerfile: docker/supernode.Dockerfile
+    network_mode: "host"  # Enables access to local DataClay via 127.0.0.1
+    command:
+      - --insecure
+      - --superlink
+      - localhost:9092  # For simulation - in production, use Controller IP
+      - --clientappio-api-address
+      - "0.0.0.0:9094"
+    depends_on:
+      - superlink
+
+  # Second node machine
+  supernode-2:
+    build:
+      context: ..
+      dockerfile: docker/supernode.Dockerfile
+    network_mode: "host"  # Enables access to local DataClay via 127.0.0.1
+    command:
+      - --insecure
+      - --superlink
+      - localhost:9092  # For simulation - in production, use Controller IP
+      - --clientappio-api-address
+      - "0.0.0.0:9095"
+    depends_on:
+      - superlink
+
+  # Additional nodes can be added following the same pattern
+  # Uncomment and modify as needed
+  #
+  # # Third node machine
+  # supernode-3:
+  #   build:
+  #     context: ..
+  #     dockerfile: docker/supernode.Dockerfile
+  #   network_mode: "host"  # Enables access to local DataClay via 127.0.0.1
+  #   command:
+  #     - --insecure
+  #     - --superlink
+  #     - localhost:9092  # For simulation - in production, use Controller IP address
+  #     - --clientappio-api-address
+  #     - "0.0.0.0:9096"  # Use a different port for each node
+  #   depends_on:
+  #     - superlink
+  #
+  # # More nodes can be added as needed following the same pattern
+  # # Each node should have a unique port for clientappio-api-address
+  # # In production, each supernode runs on its own machine
