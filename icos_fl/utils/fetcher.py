@@ -161,9 +161,9 @@ class Fetcher(metaclass=Singleton):
 
         Converts the raw DataClay metrics into standardized columns with appropriate units:
         - power_microwatts → power_consumption (watts)
-        - load_avg_one → cpu_consumption
-        - memory_bytes → memory_consumption (MB)
-        - Adds derived energy_consumption metric
+        - load_avg_one → cpu_usage
+        - memory_bytes → memory_usage (MB)
+        - Adds derived power_consumption metric
 
         Args:
             df: Raw DataFrame from TimeSeriesData
@@ -202,11 +202,11 @@ class Fetcher(metaclass=Singleton):
 
         # Add CPU usage (load average)
         if load_col:
-            dataset["cpu_consumption"] = df[load_col]
+            dataset["cpu_usage"] = df[load_col]
 
         # Calculate RAM usage in MB (total - available)
         if mem_total_col and mem_avail_col:
-            dataset["memory_consumption"] = (df[mem_total_col] - df[mem_avail_col]) / (
+            dataset["memory_usage"] = (df[mem_total_col] - df[mem_avail_col]) / (
                 1024 * 1024
             )  # Convert to MB
 

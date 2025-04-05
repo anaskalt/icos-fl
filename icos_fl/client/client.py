@@ -195,7 +195,7 @@ def client_fn(context: Context) -> NumPyClient:
     client_id = context.node_config.get("cid", context.node_id)
 
     # Extract configuration from context
-    metric = context.run_config.get("metric", "cpu_consumption")
+    metric = context.run_config.get("metric", "cpu_usage")
     local_epochs = int(context.run_config.get("local-epochs", 1))
 
     # Model hyperparameters

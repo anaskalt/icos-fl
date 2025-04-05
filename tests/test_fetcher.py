@@ -272,7 +272,7 @@ def test_post_process() -> None:
     print("")
     print_subsection_title("Checking for expected columns:")
 
-    expected_cols = ["timestamp", "power_consumption", "cpu_consumption", "memory_consumption"]
+    expected_cols = ["timestamp", "power_consumption", "cpu_usage", "memory_usage"]
     found_cols = [col for col in expected_cols if col in processed_df.columns]
 
     if len(found_cols) == len(expected_cols):
@@ -387,7 +387,7 @@ def test_error_handling() -> None:
         print(cols_msg)
 
         # Check if any of the expected columns are missing
-        expected_columns = ["power_consumption", "cpu_consumption", "memory_consumption"]
+        expected_columns = ["power_consumption", "cpu_usage", "memory_usage"]
         missing = [col for col in expected_columns if col not in result.columns]
 
         if missing:
@@ -480,10 +480,10 @@ def test_fetcher_processor_integration() -> None:
         print("")
         print("  • Step 2: Initializing Processor...")
 
-        # Use 'cpu_consumption' as the default target metric
+        # Use 'cpu_usage' as the default target metric
         processor = Processor(
             time_step=10,  # Use 5 time steps for sequences
-            metric="cpu_consumption",
+            metric="cpu_usage",
             batch_size=64,
             train_ratio=0.8,
             device=torch.device("cpu"),  # Use CPU device for testing
@@ -491,7 +491,7 @@ def test_fetcher_processor_integration() -> None:
 
         processor_config_msg = (
             f"  • Processor configuration: time_step={paint(WHT, '5')}, "
-            f"metric={paint(WHT, 'cpu_consumption')}, batch_size={paint(WHT, '16')}"
+            f"metric={paint(WHT, 'cpu_usage')}, batch_size={paint(WHT, '16')}"
         )
         print(processor_config_msg)
 

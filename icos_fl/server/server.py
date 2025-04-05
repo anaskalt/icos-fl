@@ -183,7 +183,7 @@ def server_fn(context: Context) -> ServerAppComponents:
     min_fit_clients = int(context.run_config.get("min-fit-clients", 2))
     min_evaluate_clients = int(context.run_config.get("min-evaluate-clients", 2))
     min_available_clients = int(context.run_config.get("min-available-clients", 2))
-    metric = context.run_config.get("metric", "cpu_consumption")
+    metric = context.run_config.get("metric", "cpu_usage")
     batch_size = int(context.run_config.get("batch-size", 64))
     use_wandb = context.run_config.get("use-wandb", True)
 

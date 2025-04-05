@@ -47,7 +47,7 @@ def create_synthetic_data(rows: int = 100, cols: int = 3) -> pd.DataFrame:
     for i in range(rows):
         hour = i % 24
         cpu[i] += daily_pattern[hour] * 0.2
-    data["cpu_consumption"] = np.clip(cpu, 0.1, 0.9)  # Keep values in reasonable range
+    data["cpu_usage"] = np.clip(cpu, 0.1, 0.9)  # Keep values in reasonable range
 
     # Memory consumption: Gradual increase with resets
     memory = np.linspace(0.3, 0.8, rows)
@@ -56,11 +56,11 @@ def create_synthetic_data(rows: int = 100, cols: int = 3) -> pd.DataFrame:
         if i + 3 < rows:
             memory[i : i + 3] = 0.3
     memory += np.random.normal(0, 0.03, rows)  # Add noise
-    data["memory_consumption"] = np.clip(memory, 0.2, 0.9)
+    data["memory_usage"] = np.clip(memory, 0.2, 0.9)
 
-    # Energy consumption: Correlated with CPU but with lag
-    energy = np.roll(cpu, 2) * 0.7 + np.random.normal(0, 0.02, rows) + 0.2
-    data["energy_consumption"] = np.clip(energy, 0.1, 0.8)
+    # Power consumption: Correlated with CPU but with lag
+    power = np.roll(cpu, 2) * 0.7 + np.random.normal(0, 0.02, rows) + 0.2
+    data["power_consumption"] = np.clip(power, 0.1, 0.8)
 
     # Create DataFrame
     df = pd.DataFrame(data, index=date_range)
@@ -88,7 +88,7 @@ def initialize_processor() -> None:
     print("")
 
     # Initialize with default parameters
-    processor1 = Processor(time_step=10, metric="cpu_consumption")
+    processor1 = Processor(time_step=10, metric="cpu_usage")
 
     print(paint(BYEL, "▶ Processor 1 Configuration:"))
 
@@ -106,7 +106,7 @@ def initialize_processor() -> None:
 
     # Initialize with custom parameters
     processor2 = Processor(
-        time_step=15, metric="memory_consumption", batch_size=32, train_ratio=0.75, device=DEVICE
+        time_step=15, metric="memory_usage", batch_size=32, train_ratio=0.75, device=DEVICE
     )
 
     print("")
@@ -137,7 +137,7 @@ def test_data_normalization() -> None:
     df = create_synthetic_data(rows=100)
 
     # Create processor
-    processor = Processor(time_step=10, metric="cpu_consumption")
+    processor = Processor(time_step=10, metric="cpu_usage")
 
     # Normalize data
     normalized_df = processor._normalize_data(df)
@@ -180,7 +180,7 @@ def test_train_test_split() -> None:
     df = create_synthetic_data(rows=100)
 
     # Create processor
-    processor = Processor(time_step=10, metric="cpu_consumption")
+    processor = Processor(time_step=10, metric="cpu_usage")
 
     # Test different split ratios
     ratios = [0.5, 0.7, 0.8, 0.9]
@@ -218,7 +218,7 @@ def test_time_series_dataset() -> None:
     df = create_synthetic_data(rows=100)
 
     # Normalize data for TimeSeriesDataset
-    processor = Processor(time_step=10, metric="cpu_consumption")
+    processor = Processor(time_step=10, metric="cpu_usage")
     normalized_df = processor._normalize_data(df)
 
     # Create dataset
@@ -227,7 +227,7 @@ def test_time_series_dataset() -> None:
         start_index=0,
         population=80,
         time_step=10,
-        metric="cpu_consumption",
+        metric="cpu_usage",
         device=DEVICE,
     )
 
@@ -278,7 +278,7 @@ def test_data_loader_creation() -> None:
 
     # Create processor
     processor = Processor(
-        time_step=10, metric="cpu_consumption", batch_size=16, train_ratio=0.8, device=DEVICE
+        time_step=10, metric="cpu_usage", batch_size=16, train_ratio=0.8, device=DEVICE
     )
 
     # Create dataloaders
@@ -315,13 +315,13 @@ def test_data_loader_creation() -> None:
     print(paint(BMAG, "► Testing DataLoader creation with overridden parameters"))
 
     train_dataloader, val_dataloader, train_dataset, val_dataset = processor.create_data_loaders(
-        df, time_step=15, metric="memory_consumption", batch_size=8, train_ratio=0.7
+        df, time_step=15, metric="memory_usage", batch_size=8, train_ratio=0.7
     )
 
     print(paint(BYEL, "▶ DataLoaders created with custom parameters:"))
 
     time_step_msg = f"  • Time step: {paint(WHT, '15')}"
-    metric_msg = f"  • Metric: {paint(WHT, 'memory_consumption')}"
+    metric_msg = f"  • Metric: {paint(WHT, 'memory_usage')}"
     batch_size_msg = f"  • Batch size: {paint(WHT, '8')}"
     ratio_msg = f"  • Train ratio: {paint(WHT, '0.7')}"
     train_size_msg = f"  • Training set size: {paint(BGRN, str(len(train_dataset)))} sequences"
