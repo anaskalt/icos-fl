@@ -1,3 +1,0 @@
-recommonmark==0.7.1
-sphinx==8.2.3
-sphinx_rtd_theme==3.0.2
