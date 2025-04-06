@@ -44,7 +44,8 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "sphinx.ext.extlinks",
-    "recommonmark",
+    "sphinx_inline_tabs",
+    "notfound.extension",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -106,6 +107,7 @@ github_url = "https://github.com/"
 extlinks = {
     "user": (f"{github_url}%s", "@%s"),
     "pypi": ("https://pypi.org/project/%s", "%s"),
+    "wiki": ("https://wikipedia.org/wiki/%s", "%s"),
 }
 
 # Default role
