@@ -9,7 +9,7 @@ Introduction to LSTM Networks
 
 Long Short-Term Memory (LSTM) networks are a type of Recurrent Neural Network (RNN) specifically designed to address the vanishing gradient problem that affects standard RNNs.
 
-.. figure:: ../../_static/images/lstm_cell.png
+.. figure:: ../../_static/images/lstm_cell.svg
    :alt: LSTM Cell Structure
    :align: center
 

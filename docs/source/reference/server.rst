@@ -176,7 +176,7 @@ The server workflow in ICOS-FL follows these steps:
 Example Usage
 -------------
 
-.. code-block:: python
+.. code-block:: console
 
    # Run the server with Flower CLI
    $ flwr run . remote-deployment --server-only

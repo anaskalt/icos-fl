@@ -109,7 +109,7 @@ The client workflow in ICOS-FL follows these steps:
 Example Usage
 -------------
 
-.. code-block:: python
+.. code-block:: console
 
    # Run the client with Flower CLI
    $ flwr run . remote-deployment --client-only --server-address=127.0.0.1:9092

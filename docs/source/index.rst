@@ -8,10 +8,6 @@ ICOS-FL Documentation
 
 ICOS-FL is a federated learning framework for real-time resource monitoring built on Flower. It enables distributed training of LSTM models for predicting system metrics like CPU usage, memory consumption, and power usage across ICOS nodes.
 
-.. sidebar-links::
-   :home:
-   :pypi:
-
 .. toctree::
    :maxdepth: 1
    :hidden:
@@ -22,6 +18,10 @@ ICOS-FL is a federated learning framework for real-time resource monitoring buil
    Reference <reference/index>
    Contributing <contributing/index>
    security
+
+.. rubric:: Project Links
+
+* `GitHub Repository <https://github.com/anaskalt/icos-fl>`_
 
 Features
 ========
