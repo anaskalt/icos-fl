@@ -8,40 +8,219 @@ version = "0.1.0"
 description = "ICOS-FL: Flower-powered FL framework for real-time resource monitoring (LSTM) & predictions. Modular architecture for custom AI models + private distributed training."
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 authors = [
   { name = "Anastasios Kaltakis", email = "anastasioskaltakis@gmail.com" },
 ]
 dependencies = [
-  "flwr[simulation]>=1.16.0",
+  "flwr[simulation]>=1.17.0",
   "torch==2.5.1",
-  "wandb==0.17.8",
+  "wandb==0.19.8",
+  "pandas>=2.2.3",
+  "scikit-learn>=1.6.1",
+  "dataclay==4.0.0",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+keywords = ["federated-learning", "flower", "icos-fl", "lstm", "resource-monitoring"]
+
+[project.urls]
+Homepage = "https://github.com/anaskalt/icos-fl"
+Repository = "https://github.com/anaskalt/icos-fl"
+Documentation = "https://icos-fl.readthedocs.io"
+"Bug Tracker" = "https://github.com/anaskalt/icos-fl/issues"
+Changelog = "https://github.com/anaskalt/icos-fl/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit>=4.0.1",
+    "bump2version>=1.0.1",
+    "watchdog[watchmedo]>=6.0.0",
+]
+test = [
+    "pytest>=8.3.3",
+    "pytest-cov>=6.0.0",
+    "coverage[toml]>=7.6.7",
+    "xdoctest>=1.2.0",
+]
+lint = [
+    "black>=24.10.0",
+    "isort>=5.13.2",
+    "ruff>=0.7.4",
+]
+sec = [
+    "safety>=3.2.11",
+]
+type = [
+    "mypy>=1.13.0",
+]
+docs = [
+    "sphinx==8.2.3",
+    "furo==2024.8.6",
+    "sphinx-notfound-page==1.1.0",
+    "sphinx-inline-tabs==2023.4.21",
+    "sphinx-lint==1.0.0",
+]
+all = [
+    "icos-fl[dev,test,lint,sec,type,docs]",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["."]
 
+[tool.coverage.paths]
+source = ["icos_fl", "*/site-packages"]
+
+[tool.coverage.run]
+branch = true
+source = ["icos_fl"]
+
+[tool.coverage.report]
+fail_under = 80
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "if self.debug",
+  "if settings.DEBUG:",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if 0:",
+  "if __name__ == __main__:"
+]
+show_missing = true
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.ruff]
+target-version = "py310"
+output-format = "full"
+line-length = 99
+fix = true
+extend-exclude = [
+    "docs/*",
+]
+
+[tool.ruff.lint]
+select = [
+  "E", "F", "W",  # flake8
+  "C",            # mccabe
+  "I",            # isort
+  "N",            # pep8-naming
+  "D",            # flake8-docstrings
+  "ANN",          # flake8-annotations
+  "S",            # flake8-bandit
+  "BLE",          # flake8-blind-except
+  "B",            # flake8-bugbear
+  "A",            # flake8-builtins
+  "G",            # flake8-logging-format
+  "ERA",          # eradicate
+  "ISC",          # flake8-implicit-str-concat
+  "RUF",          # Ruff-specific rules
+]
+ignore = [
+  "ARG001",       # Missing type annotation for `self` in method
+  "ARG002",       # Missing type annotation for `cls` in classmethod
+]
+unfixable = [
+  "ERA",          # Don't remove commented-out code
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["icos_fl"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+line_length = 99
+known_first_party = ["icos_fl"]
+
+[tool.black]
+line-length = 99
+target-version = ["py310", "py311", "py312"]
+
+[tool.mypy]
+warn_return_any = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = ["pytest.*"]
+allow_redefinition = false
+check_untyped_defs = true
+ignore_errors = false
+ignore_missing_imports = true
+implicit_reexport = true
+local_partial_types = true
+strict_optional = true
+strict_equality = true
+no_implicit_optional = true
+warn_unused_ignores = true
+warn_unreachable = true
+warn_no_return = true
+
+# Flower-specific configuration
+
 [tool.flwr.app]
 publisher = "Anastasios Kaltakis"
 
 [tool.flwr.app.components]
-serverapp = "src.icos_fl.server.server:app"
-clientapp = "src.icos_fl.client.client:app"
+serverapp = "icos_fl.server.server:app"
+clientapp = "icos_fl.client.client:app"
 
 [tool.flwr.app.config]
+# Server configuration
 num-server-rounds = 10
 fraction-fit = 1.0
 fraction-evaluate = 1.0
-local-epochs = 2
+min-fit-clients = 2
+min-evaluate-clients = 2
 min-available-clients = 2
-batch-size = 128
-save-global-model = false
 server-device = "cpu"
-use-wandb = true
+
+# LSTM model configuration
+hidden-layer-size = 10
+time-step = 10
+num-layers = 1
+
+# Resource metric to monitor and predict
+# Options: "cpu_usage", "memory_usage", "power_consumption"
+metric = "cpu_usage"
+batch-size = 64
+train-test-split = 0.8
+local-epochs = 100
+learning-rate = 0.001
+
+use-wandb = false
 
 [tool.flwr.federations]
 default = "local-deployment"
 
 [tool.flwr.federations.local-deployment]
+address = "127.0.0.1:9093"
+insecure = true
+
+[tool.flwr.federations.remote-deployment]
 address = "127.0.0.1:9093"
 insecure = true

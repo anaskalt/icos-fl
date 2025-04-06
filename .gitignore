@@ -133,3 +133,7 @@ dmypy.json
 
 # Code editors
 .vscode
+
+# Produced folders (generated during runtime)
+model/
+wandb/

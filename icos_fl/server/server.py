@@ -1,0 +1,257 @@
+"""Server implementation for ICOS-FL using Flower's ServerApp architecture.
+
+This module defines the server setup for the federated learning system,
+initializing and configuring the Flower ServerApp with appropriate strategy
+for centralized model aggregation and evaluation.
+"""
+
+import logging
+import os
+from logging import CRITICAL, INFO, WARN
+from typing import Callable, Dict, Optional, Tuple
+
+import torch
+from dataclay.exceptions import DataClayException
+from flwr.common import (
+    Context,
+    NDArrays,
+    Scalar,
+    logger,
+    ndarrays_to_parameters,
+    parameters_to_ndarrays,
+)
+from flwr.server import ServerApp, ServerAppComponents, ServerConfig
+
+from icos_fl.models.lstm import LSTMModel, get_weights, set_weights, test
+from icos_fl.server.strategy import (
+    CustomFedAvg,
+    evaluate_metrics_aggregation,
+    train_metrics_aggregation,
+)
+from icos_fl.utils.fetcher import Fetcher
+from icos_fl.utils.logo import print_server_banner
+from icos_fl.utils.processor import Processor
+
+logging.getLogger("flwr").propagate = False
+
+# Display server banner
+print_server_banner()
+
+fetcher = Fetcher()
+
+
+def gen_evaluate_fn(
+    model: LSTMModel, metric: str, time_step: int, batch_size: int, device: torch.device
+) -> Callable[[int, NDArrays, Dict[str, Scalar]], Optional[Tuple[float, Dict[str, Scalar]]]]:
+    """Generate a centralized evaluation function.
+
+    This function creates a callable that can evaluate the global model
+    on a centralized test dataset.
+
+    Args:
+        model: The LSTM model to evaluate
+        metric: The metric being predicted
+        time_step: Window size for time series prediction
+        batch_size: Batch size for data loaders
+        device: Device to run evaluation on
+
+    Returns:
+        Function that takes (round, parameters, config) and returns (loss, metrics)
+    """
+
+    def evaluate(
+        server_round: int,
+        parameters: NDArrays,
+        config: Dict[str, Scalar],
+    ) -> Optional[Tuple[float, Dict[str, Scalar]]]:
+        """Evaluate global model on centralized test set."""
+        eval_msg = f"Running centralized evaluation for round {server_round}"
+        logger.log(INFO, eval_msg)
+
+        try:
+            # Set the model weights
+            model_params = parameters_to_ndarrays(parameters)
+            set_weights(model, model_params)
+
+            df = None
+
+            # Fetch test dataset using Fetcher
+            try:
+                df = fetcher.fetch_data(timeout=60)
+            except Exception as e:  # noqa: BLE001
+                error_msg = f"Error fetching data: {e}"
+                logger.log(CRITICAL, error_msg)
+                return None
+
+            if df is None or len(df) == 0:
+                no_data_msg = "No data available for centralized evaluation"
+                logger.log(WARN, no_data_msg)
+                return None
+
+            # Create processor for data preparation
+            processor = Processor(time_step=time_step, metric=metric, device=device)
+
+            # Create dataloaders with emphasis on validation data
+            # Using a low train_ratio to prioritize evaluation data
+            _, val_dataloader, _, _ = processor.create_data_loaders(
+                df, train_ratio=0.2, batch_size=batch_size
+            )
+
+            # Evaluate the model
+            val_loss = test(model, val_dataloader, device)
+
+            # Calculate accuracy
+            accuracy = max(0.0, 1.0 - val_loss)
+
+            eval_result_msg = (
+                f"Centralized evaluation loss: {val_loss:.6f}, "
+                f"Centralized evaluation accuracy: {accuracy:.6f}"
+            )
+            logger.log(INFO, eval_result_msg)
+
+            return val_loss, {"centralized_accuracy": accuracy}
+        except DataClayException as e:
+            # Handle specific exceptions from DataClay
+            error_msg = f"DataClay error during centralized evaluation: {e}"
+            logger.log(CRITICAL, error_msg)
+            return None
+        except TimeoutError as e:
+            # Handle timeout errors
+            timeout_msg = f"Timeout during centralized evaluation: {e}"
+            logger.log(CRITICAL, timeout_msg)
+            return None
+        except Exception as e:  # noqa: BLE001
+            # Handle any other exceptions
+            error_msg = f"Unexpected error during centralized evaluation: {e}"
+            logger.log(CRITICAL, error_msg)
+            return None
+
+    return evaluate
+
+
+def create_on_fit_config_fn(learning_rate: float) -> Callable[[int], Dict[str, Scalar]]:
+    """Create an on_fit_config function with the specified learning rate.
+
+    Args:
+        learning_rate: Learning rate to use in the config
+
+    Returns:
+        A function that creates client configs with this learning rate
+    """
+
+    def on_fit_config(server_round: int) -> Dict[str, Scalar]:
+        """Return training configuration dict for each round."""
+        config = {
+            "server_round": server_round,
+            "lr": learning_rate,
+        }
+        return config
+
+    return on_fit_config
+
+
+def on_evaluate_config(server_round: int) -> Dict[str, Scalar]:
+    """Return evaluation configuration dict for each round.
+
+    Args:
+        server_round: Current federated learning round
+
+    Returns:
+        Configuration dictionary with server round
+    """
+    return {
+        "server_round": server_round,
+    }
+
+
+def server_fn(context: Context) -> ServerAppComponents:
+    """Create and return a Flower server instance.
+
+    This function is used by the ServerApp to create server components
+    for the federated learning system.
+
+    Args:
+        context: Flower server context
+
+    Returns:
+        Instantiated ServerAppComponents
+    """
+    # Extract configuration from context
+    num_rounds = int(context.run_config.get("num-server-rounds", 10))
+    fraction_fit = float(context.run_config.get("fraction-fit", 0.5))
+    fraction_evaluate = float(context.run_config.get("fraction-evaluate", 0.5))
+    min_fit_clients = int(context.run_config.get("min-fit-clients", 2))
+    min_evaluate_clients = int(context.run_config.get("min-evaluate-clients", 2))
+    min_available_clients = int(context.run_config.get("min-available-clients", 2))
+    metric = context.run_config.get("metric", "cpu_usage")
+    batch_size = int(context.run_config.get("batch-size", 64))
+    use_wandb = context.run_config.get("use-wandb", True)
+
+    learning_rate = float(context.run_config.get("learning-rate", 0.001))
+    on_fit_config_fn = create_on_fit_config_fn(learning_rate)
+
+    # Create model parameters
+    hidden_layer_size = int(context.run_config.get("hidden-layer-size", 10))
+    time_step = int(context.run_config.get("time-step", 10))
+    num_layers = int(context.run_config.get("num-layers", 1))
+
+    # Create result directory
+    save_dir = os.path.join("model", metric)
+    os.makedirs(save_dir, exist_ok=True)
+
+    # Initialize model
+    device = torch.device(context.run_config.get("server-device", "cpu"))
+    model = LSTMModel(
+        hidden_layer_size=hidden_layer_size, time_step=time_step, num_layers=num_layers
+    ).to(device)
+
+    # Get initial model parameters
+    initial_parameters = ndarrays_to_parameters(get_weights(model))
+
+    # Create strategy
+    strategy = CustomFedAvg(
+        # Custom parameters
+        run_config=context.run_config,
+        model=model,
+        metric=metric,
+        use_wandb=use_wandb,
+        save_dir=save_dir,
+        # FedAvg parameters
+        fraction_fit=fraction_fit,
+        fraction_evaluate=fraction_evaluate,
+        min_fit_clients=min_fit_clients,
+        min_evaluate_clients=min_evaluate_clients,
+        min_available_clients=min_available_clients,
+        initial_parameters=initial_parameters,
+        on_fit_config_fn=on_fit_config_fn,
+        on_evaluate_config_fn=on_evaluate_config,
+        fit_metrics_aggregation_fn=train_metrics_aggregation,
+        evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation,
+        # Centralized evaluation function
+        evaluate_fn=gen_evaluate_fn(model, metric, time_step, batch_size, device),
+    )
+
+    # Create server configuration
+    config = ServerConfig(num_rounds=num_rounds)
+
+    # Log server configuration
+    start_msg = f"Starting server for metric {metric}"
+    rounds_msg = f"Number of rounds: {num_rounds}"
+    fraction_msg = f"Fraction fit: {fraction_fit}, Fraction evaluate: {fraction_evaluate}"
+    clients_msg = (
+        f"Minimum clients - fit: {min_fit_clients}, evaluate: {min_evaluate_clients}, "
+        f"available: {min_available_clients}"
+    )
+    save_msg = f"Model saved to: {save_dir}"
+
+    logger.log(INFO, start_msg)
+    logger.log(INFO, rounds_msg)
+    logger.log(INFO, fraction_msg)
+    logger.log(INFO, clients_msg)
+    logger.log(INFO, save_msg)
+
+    return ServerAppComponents(strategy=strategy, config=config)
+
+
+# Define the Flower ServerApp
+app = ServerApp(server_fn=server_fn)
