@@ -39,7 +39,7 @@ pip install -e .
 
 ```bash
 # Start required services using Docker Compose
-docker compose up -d
+docker compose -f docker/simulation.yml up -d
 ```
 
 ### Run Federated Learning

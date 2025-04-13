@@ -112,7 +112,7 @@ Example Usage
 .. code-block:: console
 
    # Run the client with Flower CLI
-   $ flwr run . remote-deployment --client-only --server-address=127.0.0.1:9092
+   $ flwr run . remote-deployment
 
    # Or programmatically
    from icos_fl.client.client import app
