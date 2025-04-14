@@ -28,8 +28,8 @@ Input Data Characteristics
 ICOS-FL works with several types of system metrics:
 
 .. list-table::
-   :widths: 25 20 55
    :header-rows: 1
+   :align: left
 
    * - Metric
      - Typical Range

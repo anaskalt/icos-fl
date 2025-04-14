@@ -23,6 +23,13 @@ ICOS-FL is a federated learning framework powered by Flower for real-time resour
 - **Docker Deployment**: Easy setup with containerized components
 - **Modular Architecture**: Customize models, metrics, and federated strategies
 
+## Requirements
+
+- Python 3.10 or newer
+- Docker and Docker Compose
+- At least 4GB of available RAM
+- Network access between nodes (for distributed deployment)
+
 ## Installation
 
 ### From Source
@@ -49,7 +56,7 @@ docker compose -f docker/simulation.yml up -d
 flwr run . local-deployment --stream
 
 # Start FL with different configuration
-flwr run . --run-config 'metric="power_consumption"' --stream
+flwr run . --run-config "metric=power_consumption" --stream
 ```
 
 ## Architecture

@@ -114,8 +114,8 @@ Scaphandre is responsible for collecting hardware metrics:
 Important metrics collected:
 
 .. list-table::
-   :widths: 40 60
    :header-rows: 1
+   :align: left
 
    * - Metric Name
      - Description
@@ -262,8 +262,8 @@ DataFrame Format
 The DataFrame has this structure:
 
 .. list-table::
-   :widths: 25 75
    :header-rows: 1
+   :align: left
 
    * - Column
      - Description
@@ -294,8 +294,8 @@ The Fetcher class retrieves and processes the raw data:
 The post-processing creates a clean DataFrame with these columns:
 
 .. list-table::
-   :widths: 25 75
    :header-rows: 1
+   :align: left
 
    * - Column
      - Description
