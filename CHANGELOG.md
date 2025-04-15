@@ -19,11 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add ASCII banner system for enhanced user experience
 - Add server round tracking and standardize WandB metrics
 - Refactor deployment setup for host network mode and improved architecture
+- Implement robust model artifacts storage with fallback mechanism
 
 ### Fixed
 - Resolve Sphinx documentation build warnings
 - Add null check for evaluation result in strategy
 - Remove redundant type ignore comments in logger
+- Secure implementation of temporary directories for model storage
 
 ### Changed
 - Standardize metric names for clarity and consistency
@@ -32,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restructure to follow Flower App Bundle (FAB) conventions
 - Remove unused 'metric' parameter from LSTMModel
 - Enhance terminal display and color utilities
+- Improve storage organization following Python ML project best practices
 
 ### Documentation
 - Update README with comprehensive project description
@@ -39,6 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restructure documentation following the Diátaxis framework
 - Add dataflow pipeline documentation
 - Add detailed deployment architecture documentation
+- Update deployment and configuration guides with correct container settings
+- Refocus quickstart guide to properly focus on Flower FL setup
+- Fix command line argument formats in tuning guides
+- Update ReadTheDocs configuration to use latest Ubuntu and Python
+- Fix documentation typos and improve navigation
 
 ### Dependencies
 - Add pandas>=2.2.3 for data manipulation
@@ -60,4 +68,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Unreleased]: https://github.com/anaskalt/icos-fl/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/anaskalt/icos-fl/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/anaskalt/icos-fl/compare/releases/tag/v0.1.0
+[0.1.0]: https://github.com/anaskalt/icos-fl/releases/tag/v0.1.0
