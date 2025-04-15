@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "icos-fl"
-version = "0.1.0"
+version = "0.2.0"
 description = "ICOS-FL: Flower-powered FL framework for real-time resource monitoring (LSTM) & predictions. Modular architecture for custom AI models + private distributed training."
 license = "MIT"
 readme = "README.md"
