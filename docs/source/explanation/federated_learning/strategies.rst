@@ -75,8 +75,8 @@ Configuration Parameters
 ICOS-FL exposes several parameters for configuring the FedAvg strategy:
 
 .. list-table::
-   :widths: 30 15 55
    :header-rows: 1
+   :align: left
 
    * - Parameter
      - Default

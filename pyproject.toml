@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "icos-fl"
-version = "0.1.0"
+version = "0.2.0"
 description = "ICOS-FL: Flower-powered FL framework for real-time resource monitoring (LSTM) & predictions. Modular architecture for custom AI models + private distributed training."
 license = "MIT"
 readme = "README.md"
@@ -211,6 +211,12 @@ batch-size = 64
 train-test-split = 0.8
 local-epochs = 100
 learning-rate = 0.001
+
+# Storage configuration
+# Directory for saving model artifacts
+# For Docker environment use /app/outputs/models
+# For local development use ./outputs/models
+result-dir = "/app/outputs/models"
 
 use-wandb = false
 

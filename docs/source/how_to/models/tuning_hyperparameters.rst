@@ -20,8 +20,8 @@ LSTM Model Parameters
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
-   :widths: 20 15 65
    :header-rows: 1
+   :align: left
 
    * - Parameter
      - Default
@@ -43,8 +43,8 @@ Training Parameters
 ~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
-   :widths: 20 15 65
    :header-rows: 1
+   :align: left
 
    * - Parameter
      - Default
@@ -63,8 +63,8 @@ Federated Learning Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
-   :widths: 20 15 65
    :header-rows: 1
+   :align: left
 
    * - Parameter
      - Default
@@ -107,86 +107,83 @@ Configure hyperparameters in the ``pyproject.toml`` file:
 Configuring via Command Line
 ----------------------------
 
-Override settings at runtime:
+Override settings at runtime using the ``--run-config`` parameter:
 
 .. code-block:: bash
 
-   flwr run . remote-deployment \
-     --config.hidden-layer-size=30 \
-     --config.local-epochs=75 \
-     --config.learning-rate=0.0002
+   # Modify a single parameter
+   flwr run . remote-deployment --run-config hidden-layer-size=30
 
-Hyperparameter Search with Weights & Biases
+   # Modify multiple parameters (use quotes)
+   flwr run . remote-deployment --run-config "local-epochs=75 learning-rate=0.0002 num-server-rounds=15"
+
+   # Using a different metric
+   flwr run . remote-deployment --run-config "metric=power_consumption batch-size=32"
+
+Hyperparameter Search with Weights & Biands
 -------------------------------------------
 
-ICOS-FL integrates with Weights & Biases for hyperparameter tuning:
+ICOS-FL integrates with Weights & Biands (W&B) for hyperparameter tuning:
 
-1. Enable W&B integration:
+1. Enable W&B integration in your configuration:
+
+   .. code-block:: bash
+
+      flwr run . remote-deployment --run-config "use-wandb=true"
+
+   Or in your ``pyproject.toml``:
 
    .. code-block:: toml
 
       [tool.flwr.app.config]
       use-wandb = true
 
-2. Create a sweep configuration file (sweep.yaml):
-
-   .. code-block:: yaml
-
-      program: main.py
-      method: bayes
-      metric:
-        name: val_loss
-        goal: minimize
-      parameters:
-        hidden-layer-size:
-          min: 10
-          max: 50
-        learning-rate:
-          min: 0.0001
-          max: 0.01
-          distribution: log_uniform
-        num-layers:
-          values: [1, 2, 3]
-        time-step:
-          values: [5, 10, 15, 20]
-        local-epochs:
-          values: [50, 100, 150]
-
-3. Initialize and run the sweep:
+2. Set up a W&B account and log in:
 
    .. code-block:: bash
 
+      pip install wandb
+      wandb login
+
+3. ICOS-FL will automatically log metrics to W&B during training, allowing you to compare performance across different hyperparameter settings.
+
+4. For systematic parameter tuning, you can use W&B Sweeps to explore the hyperparameter space:
+
+   .. code-block:: bash
+
+      # Create a sweep configuration
       wandb sweep sweep.yaml
+
+      # Run sweep agents
       wandb agent SWEEP_ID
 
 Tuning for Different Metrics
 ----------------------------
 
-Different resource metrics may require different hyperparameters:
+Different resource metrics have unique patterns that benefit from specific hyperparameter configurations:
 
-CPU Usage
-~~~~~~~~~
+.. list-table::
+   :header-rows: 1
+   :align: left
+   :widths: 25 75
 
-CPU usage patterns benefit from:
-- Smaller time windows (time-step: 8-12)
-- Fewer layers (num-layers: 1-2)
-- Moderate hidden layer size (hidden-layer-size: 10-20)
-
-Memory Usage
-~~~~~~~~~~~~
-
-Memory patterns benefit from:
-- Longer time windows (time-step: 15-20)
-- More layers (num-layers: 2-3)
-- Larger hidden layer size (hidden-layer-size: 20-40)
-
-Power Consumption
-~~~~~~~~~~~~~~~~~
-
-Power consumption patterns benefit from:
-- Medium time windows (time-step: 10-15)
-- More layers (num-layers: 2)
-- Moderate hidden layer size (hidden-layer-size: 15-25)
+   * - Metric
+     - Recommended Hyperparameters
+   * - **CPU Usage**
+     - | • **Time Window**: 8-12 time steps (shorter sequences)
+       | • **Layers**: 1-2 LSTM layers (simpler architecture)
+       | • **Hidden Size**: 10-20 units (moderate complexity)
+       | • **Batch Size**: 32-64 (standard)
+   * - **Memory Usage**
+     - | • **Time Window**: 15-20 time steps (longer sequences)
+       | • **Layers**: 2-3 LSTM layers (deeper architecture)
+       | • **Hidden Size**: 20-40 units (higher complexity)
+       | • **Batch Size**: 16-32 (smaller for more updates)
+   * - **Power Consumption**
+     - | • **Time Window**: 10-15 time steps (medium sequences)
+       | • **Layers**: 2 LSTM layers (balanced architecture)
+       | • **Hidden Size**: 15-25 units (balanced complexity)
+       | • **Batch Size**: 32 (balanced)
 
 Recommended Process
 -------------------

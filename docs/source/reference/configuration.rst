@@ -194,8 +194,8 @@ Server Configuration
 ~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
-   :widths: 30 15 55
    :header-rows: 1
+   :align: left
 
    * - Parameter
      - Default
@@ -226,8 +226,8 @@ LSTM Model Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
-   :widths: 30 15 55
    :header-rows: 1
+   :align: left
 
    * - Parameter
      - Default
@@ -249,8 +249,8 @@ Training Configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
-   :widths: 30 15 55
    :header-rows: 1
+   :align: left
 
    * - Parameter
      - Default
@@ -275,8 +275,8 @@ Time Series Data Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
-   :widths: 30 15 55
    :header-rows: 1
+   :align: left
 
    * - Parameter
      - Default
@@ -297,8 +297,8 @@ Environment Variables
 ICOS-FL respects these environment variables:
 
 .. list-table::
-   :widths: 30 70
    :header-rows: 1
+   :align: left
 
    * - Variable
      - Description

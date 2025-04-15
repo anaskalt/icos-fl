@@ -114,8 +114,8 @@ Component Communication
 ICOS-FL components communicate through several protocols:
 
 .. list-table::
-   :widths: 25 25 50
    :header-rows: 1
+   :align: left
 
    * - Components
      - Protocol
@@ -142,8 +142,8 @@ Docker Container Architecture
 Each component runs in its own Docker container:
 
 .. list-table::
-   :widths: 20 40 40
    :header-rows: 1
+   :align: left
 
    * - Container
      - Responsibility
@@ -191,8 +191,8 @@ ICOS-FL uses several network configurations:
 Port allocations:
 
 .. list-table::
-   :widths: 15 15 70
    :header-rows: 1
+   :align: left
 
    * - Port
      - Protocol
@@ -225,8 +225,8 @@ Resource Requirements
 Minimum requirements for each component:
 
 .. list-table::
-   :widths: 20 20 20 40
    :header-rows: 1
+   :align: left
 
    * - Component
      - CPU

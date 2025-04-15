@@ -134,6 +134,12 @@ dmypy.json
 # Code editors
 .vscode
 
-# Produced folders (generated during runtime)
-model/
+# ICOS-FL specific artifacts
+# ------------------------
+# Generated runtime folders
 wandb/
+
+# ML Model artifacts
+# Keep directory structure but ignore model files
+outputs/models/*/*.pt
+outputs/models/*/*.pth

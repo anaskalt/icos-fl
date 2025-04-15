@@ -26,8 +26,8 @@ Collected Metrics
 By default, ICOS-FL collects these system metrics:
 
 .. list-table::
-   :widths: 25 75
    :header-rows: 1
+   :align: left
 
    * - Metric
      - Description
@@ -43,8 +43,8 @@ By default, ICOS-FL collects these system metrics:
 These metrics are transformed into more user-friendly values:
 
 .. list-table::
-   :widths: 25 25 50
    :header-rows: 1
+   :align: left
 
    * - Source Metric
      - Transformed Metric

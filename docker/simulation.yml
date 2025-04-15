@@ -11,7 +11,7 @@ services:
       dockerfile: docker/superlink.Dockerfile
     network_mode: "host"  # Enables access to local DataClay via 127.0.0.1
     volumes:
-      - ..:/app/model:rw  # To save model checkpoints to the host machine
+      - ../outputs:/app/outputs:rw  # To save model checkpoints to the host machine
     command:
       - --insecure
 

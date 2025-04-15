@@ -164,6 +164,47 @@ def on_evaluate_config(server_round: int) -> Dict[str, Scalar]:
     }
 
 
+def create_model_directory(base_dir: str, metric: str) -> str:
+    """Create and return the model directory path.
+
+    This function attempts to create a directory for storing model artifacts.
+    If the requested directory cannot be created, it falls back to /tmp.
+
+    Args:
+        base_dir: Base directory path for storing models
+        metric: Metric name to use for the subdirectory
+
+    Returns:
+        Path to the created directory where models will be stored
+    """
+    # Construct primary directory path
+    save_dir = os.path.join(base_dir, metric)
+
+    try:
+        # Try to create the directory
+        os.makedirs(save_dir, exist_ok=True)
+        created_msg = f"Created model directory: {save_dir}"
+        logger.log(INFO, created_msg)
+        return save_dir
+    except (PermissionError, OSError) as e:
+        # Fall back to /tmp
+        import tempfile
+
+        error_msg = f"Cannot create directory at {save_dir}: {e}"
+        fallback_msg = "Using temporary directory for model storage"
+        logger.log(WARN, error_msg)
+        logger.log(INFO, fallback_msg)
+
+        # Use a temporary directory as fallback
+        temp_base = tempfile.gettempdir()
+        tmp_dir = os.path.join(temp_base, f"icos-fl-{metric}")
+        os.makedirs(tmp_dir, exist_ok=True)
+
+        tmp_msg = f"Created temporary directory: {tmp_dir}"
+        logger.log(INFO, tmp_msg)
+        return tmp_dir
+
+
 def server_fn(context: Context) -> ServerAppComponents:
     """Create and return a Flower server instance.
 
@@ -195,9 +236,9 @@ def server_fn(context: Context) -> ServerAppComponents:
     time_step = int(context.run_config.get("time-step", 10))
     num_layers = int(context.run_config.get("num-layers", 1))
 
-    # Create result directory
-    save_dir = os.path.join("model", metric)
-    os.makedirs(save_dir, exist_ok=True)
+    # Get result directory from context and create model directory
+    result_dir = context.run_config.get("result-dir", "/app/outputs/models")
+    save_dir = create_model_directory(result_dir, metric)
 
     # Initialize model
     device = torch.device(context.run_config.get("server-device", "cpu"))

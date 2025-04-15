@@ -179,7 +179,7 @@ Example Usage
 .. code-block:: console
 
    # Run the server with Flower CLI
-   $ flwr run . remote-deployment --server-only
+   $ flwr run . remote-deployment
 
    # Or programmatically
    from icos_fl.server.server import app
