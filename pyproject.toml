@@ -212,6 +212,12 @@ train-test-split = 0.8
 local-epochs = 100
 learning-rate = 0.001
 
+# Storage configuration
+# Directory for saving model artifacts
+# For Docker environment use /app/outputs/models
+# For local development use ./outputs/models
+result-dir = "/app/outputs/models"
+
 use-wandb = false
 
 [tool.flwr.federations]
