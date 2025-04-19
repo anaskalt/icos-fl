@@ -14,7 +14,7 @@ authors = [
 ]
 dependencies = [
   "flwr[simulation]>=1.17.0",
-  "torch==2.5.1",
+  "torch==2.6.0",
   "wandb==0.19.8",
   "pandas>=2.2.3",
   "scikit-learn>=1.6.1",
