@@ -13,12 +13,12 @@ authors = [
   { name = "Anastasios Kaltakis", email = "anastasioskaltakis@gmail.com" },
 ]
 dependencies = [
-  "flwr[simulation]>=1.17.0",
+  "flwr[simulation]>=1.18",
   "torch==2.5.1",
   "wandb==0.19.8",
-  "pandas>=2.2.3",
+  "pandas>=1.5.3",
   "scikit-learn>=1.6.1",
-  "dataclay==4.0.0",
+  "dataclay @ git+https://github.com/bsc-dom/dataclay.git"
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -74,6 +74,9 @@ docs = [
 all = [
     "icos-fl[dev,test,lint,sec,type,docs]",
 ]
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["."]
