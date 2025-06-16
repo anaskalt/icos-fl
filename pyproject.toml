@@ -65,7 +65,7 @@ type = [
     "mypy>=1.13.0",
 ]
 docs = [
-    "sphinx==8.2.3",
+    "sphinx==8.1.3",
     "furo==2024.8.6",
     "sphinx-notfound-page==1.1.0",
     "sphinx-inline-tabs==2023.4.21",
@@ -221,6 +221,16 @@ learning-rate = 0.001
 # For local development use ./outputs/models
 result-dir = "/app/outputs/models"
 
+# Model persistence configuration
+# Enable/disable different storage backends for trained models
+save-local = true          # Save models to local filesystem (default: true)
+save-dataclay = false      # Save models to DataClay distributed storage (default: false)
+
+# DataClay configuration (used when save-dataclay = true)
+dataclay-host = "127.0.0.1"    # DataClay proxy server address
+dataclay-dataset = "admin"      # DataClay dataset name for authentication
+
+# Weights & Biases configuration
 use-wandb = false
 
 [tool.flwr.federations]

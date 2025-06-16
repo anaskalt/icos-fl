@@ -1,23 +1,25 @@
 """Strategy implementation for ICOS-FL federated learning.
 
 This module defines custom strategies for federated learning aggregation,
-including model update aggregation, metrics tracking, and checkpoint
-management.
+including model update aggregation, metrics tracking, checkpoint management,
+and multi-backend model persistence.
 """
 
 import logging
 import os
-from logging import INFO
+from datetime import datetime
+from logging import ERROR, INFO, WARN
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
+import wandb
 from flwr.common import FitRes, Metrics, Parameters, Scalar, logger, parameters_to_ndarrays
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy import FedAvg
 
-import wandb
 from icos_fl.models.lstm import LSTMModel, set_weights
 from icos_fl.utils.logo import NEURAL_NET, OBJECT2, print_banner, print_completion_banner
+from icos_fl.utils.model_storage import ModelStorageManager
 
 logging.getLogger("flwr").propagate = False
 
@@ -25,20 +27,27 @@ PROJECT_NAME = "ICOS-FL"
 
 
 class CustomFedAvg(FedAvg):
-    """Custom FedAvg strategy for ICOS-FL.
+    """Custom FedAvg strategy with multi-backend model persistence support.
 
     Extends the standard FedAvg strategy with additional functionality:
-    - Tracks and logs metrics using Weights & Biases
-    - Saves model checkpoints
+    - DataClay distributed storage for trained models
+    - Local filesystem storage with atomic writes
+    - Weights & Biases metrics tracking
+    - Comprehensive model checkpointing
+    - Flexible storage backend configuration
+
+    Storage behavior is controlled via run_config parameters:
+    - save-local: Enable/disable local filesystem storage (default: True)
+    - save-dataclay: Enable/disable DataClay storage (default: False)
 
     Args:
         *args: Variable length argument list for FedAvg parent class
         **kwargs: Arbitrary keyword arguments for FedAvg parent class
         run_config: Configuration dictionary from context
-        model: The LSTM model used
-        metric: The metric being predicted
-        use_wandb: Whether to use Weights & Biases for logging
-        save_dir: Directory for saving model checkpoints
+        model: The LSTM model used for federated learning
+        metric: The metric being predicted (cpu_usage, memory_usage, power_consumption)
+        use_wandb: Whether to use Weights & Biases for metrics logging
+        save_dir: Directory for local model checkpoints
     """
 
     def __init__(
@@ -51,7 +60,14 @@ class CustomFedAvg(FedAvg):
         *args,  # noqa: ANN002
         **kwargs,  # noqa: ANN003
     ) -> None:
-        """Initialize the custom FedAvg strategy."""
+        """Initialize the custom FedAvg strategy with storage configuration.
+
+        Storage options are read from run_config:
+        - 'save-local': Whether to save models locally (default: True)
+        - 'save-dataclay': Whether to save models to DataClay (default: False)
+        - 'dataclay-host': DataClay proxy host (default: "127.0.0.1")
+        - 'dataclay-dataset': DataClay dataset name (default: "admin")
+        """
         super().__init__(*args, **kwargs)
 
         self.run_config = run_config
@@ -60,8 +76,53 @@ class CustomFedAvg(FedAvg):
         self.use_wandb = use_wandb
         self.save_dir = save_dir
 
-        # Create directory for saving results
-        os.makedirs(self.save_dir, exist_ok=True)
+        # Extract storage configuration from run_config
+        self.save_local = run_config.get("save-local", True)
+        self.save_dataclay = run_config.get("save-dataclay", False)
+
+        # Ensure at least one backend is enabled
+        if not self.save_local and not self.save_dataclay:
+            self.save_local = True
+
+        # Model configuration for reconstruction
+        self.model_config = {
+            "hidden_layer_size": getattr(model, "hidden_layer_size", None),
+            "time_step": getattr(model, "time_step", None),
+            "num_layers": getattr(model, "num_layers", None),
+            "class": model.__class__.__name__,
+            "module": model.__class__.__module__,
+        }
+
+        # Initialize storage manager if DataClay is enabled
+        self.storage_manager: Optional[ModelStorageManager] = None
+        if self.save_dataclay:
+            try:
+                # Get DataClay config from run_config
+                dataclay_host = run_config.get("dataclay-host", "127.0.0.1")
+                dataclay_dataset = run_config.get("dataclay-dataset", "admin")
+
+                self.storage_manager = ModelStorageManager(
+                    proxy_host=dataclay_host, dataset=dataclay_dataset
+                )
+
+                storage_config_msg = (
+                    f"Storage backends initialized - "
+                    f"Local: {'enabled' if self.save_local else 'disabled'}, "
+                    f"DataClay: {'enabled' if self.save_dataclay else 'disabled'}"
+                )
+                logger.log(INFO, storage_config_msg)
+
+            except (ImportError, ConnectionError, RuntimeError) as e:
+                error_msg = f"Failed to initialize DataClay storage: {e}"
+                fallback_msg = "Falling back to local storage only"
+                logger.log(ERROR, error_msg)
+                logger.log(INFO, fallback_msg)
+                self.save_dataclay = False
+                self.save_local = True  # Ensure at least one backend is active
+
+        # Create directory for saving results if local storage is enabled
+        if self.save_local:
+            os.makedirs(self.save_dir, exist_ok=True)
 
         # Initialize WandB if enabled
         if self.use_wandb:
@@ -78,8 +139,13 @@ class CustomFedAvg(FedAvg):
             show_version=False,
         )
 
-        save_msg = f"Saving models to {save_dir}"
-        logger.log(INFO, save_msg)
+        if self.save_local:
+            save_msg = f"Local model storage directory: {save_dir}"
+            logger.log(INFO, save_msg)
+
+        if self.save_dataclay:
+            dataclay_msg = "DataClay distributed storage: enabled"
+            logger.log(INFO, dataclay_msg)
 
     def _init_wandb(self) -> None:
         """Initialize Weights & Biases project."""
@@ -100,6 +166,131 @@ class CustomFedAvg(FedAvg):
 
         # Log metrics to WandB with appropriate step
         wandb.log(metrics_dict, step=server_round)  # type: ignore
+
+    def _save_model_local(self, save_path: str, metadata: Dict[str, Any]) -> bool:
+        """Save model locally with atomic writes.
+
+        Args:
+            save_path: Full path for saving the model
+            metadata: Metadata to include in checkpoint
+
+        Returns:
+            True if save successful, False otherwise
+        """
+        try:
+            os.makedirs(self.save_dir, exist_ok=True)
+            checkpoint = {
+                "model_state_dict": self.model.state_dict(),
+                "model_config": self.model_config,
+                "metadata": metadata,
+            }
+
+            # Atomic write
+            temp_path = f"{save_path}.tmp"
+            torch.save(checkpoint, temp_path)
+            os.replace(temp_path, save_path)
+            return True
+
+        except (OSError, IOError) as e:
+            fallback_error_msg = f"Local save failed: {type(e).__name__}: {e}"
+            logger.log(ERROR, fallback_error_msg)
+            return False
+
+    def _save_model_backends(
+        self, save_path: str, identifier: str, metadata: Dict[str, Any]
+    ) -> Dict[str, bool]:
+        """Save model to configured backends.
+
+        Args:
+            save_path: Path for local save
+            identifier: Identifier for DataClay save
+            metadata: Metadata for the save
+
+        Returns:
+            Dictionary with save results for each backend
+        """
+        results = {"local": False, "dataclay": False}
+
+        if self.storage_manager:
+            results = self.storage_manager.save_model(
+                model=self.model,
+                save_path=save_path,
+                identifier=identifier,
+                use_local=self.save_local,
+                use_dataclay=self.save_dataclay,
+                model_config=self.model_config,
+                metadata=metadata,
+            )
+        elif self.save_local:
+            # Direct local save fallback
+            results["local"] = self._save_model_local(save_path, metadata)
+
+        return results
+
+    def _save_model(self, model_type: str, round_number: Optional[int] = None) -> None:
+        """Save model to configured storage backends with proper error handling.
+
+        Centralizes model saving logic with consistent naming conventions
+        and comprehensive metadata tracking across all model types.
+
+        Args:
+            model_type: Model variant to save ('latest', 'best', 'checkpoint')
+            round_number: FL round number for checkpoint models
+
+        Raises:
+            ValueError: If model_type is not recognized
+        """
+        # Validate model type
+        valid_types = {"latest", "best", "checkpoint"}
+        if model_type not in valid_types:
+            raise ValueError(f"Invalid model_type: {model_type}. Must be one of {valid_types}")
+
+        # Determine storage paths and identifiers
+        if model_type == "checkpoint":
+            if round_number is None:
+                raise ValueError("round_number required for checkpoint models")
+            filename = f"model_round_{round_number}.pt"
+            identifier = f"{self.metric}_checkpoint_r{round_number}"
+        elif model_type == "latest":
+            filename = f"global_model_{self.metric}.pt"
+            identifier = f"{self.metric}_latest"
+        else:  # model_type == "best"
+            filename = f"best_model_{self.metric}.pt"
+            identifier = f"{self.metric}_best"
+
+        # Construct full save path
+        save_path = os.path.join(self.save_dir, filename)
+
+        # Prepare comprehensive metadata
+        metadata = {
+            "metric": self.metric,
+            "model_type": model_type,
+            "round": round_number,
+            "best_loss": self.best_metrics.get("loss"),
+            "timestamp": datetime.now().isoformat(),
+            "run_config": {
+                "hidden_layer_size": self.model_config.get("hidden_layer_size"),
+                "time_step": self.model_config.get("time_step"),
+                "num_layers": self.model_config.get("num_layers"),
+            },
+        }
+
+        # Execute save operation
+        results = self._save_model_backends(save_path, identifier, metadata)
+
+        # Log results
+        if results["local"]:
+            local_save_msg = f"Model saved locally: {filename}"
+            logger.log(INFO, local_save_msg)
+
+        if results["dataclay"]:
+            dataclay_save_msg = f"Model persisted to DataClay: {identifier}"
+            logger.log(INFO, dataclay_save_msg)
+
+        # Warn if all saves failed
+        if not any(results.values()):
+            all_failed_msg = f"WARNING: Failed to save {model_type} model to any backend"
+            logger.log(WARN, all_failed_msg)
 
     def aggregate_fit(
         self,
@@ -133,13 +324,9 @@ class CustomFedAvg(FedAvg):
             # Update the server-side model with the aggregated parameters
             set_weights(self.model, aggregated_ndarrays)
 
-            # Save the model checkpoint
-            checkpoint_path = os.path.join(self.save_dir, f"model_round_{server_round}.pt")
-            torch.save(self.model.state_dict(), checkpoint_path)
-
-            # Also save as the latest model
-            latest_path = os.path.join(self.save_dir, f"global_model_{self.metric}.pt")
-            torch.save(self.model.state_dict(), latest_path)
+            # Save models using centralized method
+            self._save_model("checkpoint", round_number=server_round)
+            self._save_model("latest", round_number=server_round)
 
             # Prepare and log training metrics
             training_metrics = {}
@@ -190,8 +377,7 @@ class CustomFedAvg(FedAvg):
                 self.best_metrics["loss"] = aggregated_loss
 
                 # Save best model
-                best_path = os.path.join(self.save_dir, f"best_model_{self.metric}.pt")
-                torch.save(self.model.state_dict(), best_path)
+                self._save_model("best")
 
                 # Show banner for best model
                 print_banner(
@@ -245,6 +431,18 @@ class CustomFedAvg(FedAvg):
         if server_round == num_rounds:
             # This is the final round, show completion banner
             print_completion_banner()
+
+            # Clean up storage manager if present
+            if self.storage_manager:
+                try:
+                    self.storage_manager.cleanup()
+                    cleanup_msg = "Storage manager resources cleaned up"
+                    logger.log(INFO, cleanup_msg)
+                except (AttributeError, RuntimeError) as e:
+                    cleanup_error_msg = (
+                        f"Error during storage manager cleanup: {type(e).__name__}: {e}"
+                    )
+                    logger.log(WARN, cleanup_error_msg)
 
         return loss, metrics
 
