@@ -108,8 +108,6 @@ class Fetcher(metaclass=Singleton):
         Args:
             proxy_host: DataClay proxy host address
             dataset: DataClay dataset name
-            client: DataClay client object
-            time_series_data: TimeSeriesData object for managing time series data
         """
         self.proxy_host = proxy_host
         self.dataset = dataset

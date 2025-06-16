@@ -37,11 +37,15 @@ logging.getLogger("flwr").propagate = False
 # Display server banner
 print_server_banner()
 
-fetcher = Fetcher()
-
 
 def gen_evaluate_fn(
-    model: LSTMModel, metric: str, time_step: int, batch_size: int, device: torch.device
+    model: LSTMModel,
+    metric: str,
+    time_step: int,
+    batch_size: int,
+    device: torch.device,
+    dataclay_host: str,
+    dataclay_dataset: str,
 ) -> Callable[[int, NDArrays, Dict[str, Scalar]], Optional[Tuple[float, Dict[str, Scalar]]]]:
     """Generate a centralized evaluation function.
 
@@ -54,6 +58,8 @@ def gen_evaluate_fn(
         time_step: Window size for time series prediction
         batch_size: Batch size for data loaders
         device: Device to run evaluation on
+        dataclay_host: DataClay proxy host address
+        dataclay_dataset: DataClay dataset name
 
     Returns:
         Function that takes (round, parameters, config) and returns (loss, metrics)
@@ -75,6 +81,9 @@ def gen_evaluate_fn(
 
             df = None
 
+            # Create fetcher with the same DataClay configuration
+            fetcher = Fetcher(proxy_host=dataclay_host, dataset=dataclay_dataset)
+
             # Fetch test dataset using Fetcher
             try:
                 df = fetcher.fetch_data(timeout=60)
@@ -82,6 +91,14 @@ def gen_evaluate_fn(
                 error_msg = f"Error fetching data: {e}"
                 logger.log(CRITICAL, error_msg)
                 return None
+            finally:
+                # Clean up fetcher after use
+                try:
+                    fetcher._disconnect()
+                except Exception as e:  # noqa: BLE001
+                    # Log disconnection errors at warning level for debugging
+                    disconnect_warning_msg = f"Warning during fetcher disconnect: {e}"
+                    logger.log(WARN, disconnect_warning_msg)
 
             if df is None or len(df) == 0:
                 no_data_msg = "No data available for centralized evaluation"
@@ -244,6 +261,10 @@ def server_fn(context: Context) -> ServerAppComponents:
     time_step = int(context.run_config.get("time-step", 10))
     num_layers = int(context.run_config.get("num-layers", 1))
 
+    # Extract DataClay configuration
+    dataclay_host = context.run_config.get("dataclay-host", "127.0.0.1")
+    dataclay_dataset = context.run_config.get("dataclay-dataset", "admin")
+
     # Get result directory from context and create model directory
     result_dir = context.run_config.get("result-dir", "/app/outputs/models")
     save_dir = create_model_directory(result_dir, metric)
@@ -278,7 +299,9 @@ def server_fn(context: Context) -> ServerAppComponents:
         fit_metrics_aggregation_fn=train_metrics_aggregation,
         evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation,
         # Centralized evaluation function
-        evaluate_fn=gen_evaluate_fn(model, metric, time_step, batch_size, device),
+        evaluate_fn=gen_evaluate_fn(
+            model, metric, time_step, batch_size, device, dataclay_host, dataclay_dataset
+        ),
     )
 
     # Create server configuration
@@ -298,19 +321,17 @@ def server_fn(context: Context) -> ServerAppComponents:
     save_dataclay = context.run_config.get("save-dataclay", False)
     storage_msg = f"Model storage configuration: local={save_local}, dataclay={save_dataclay}"
 
-    if save_dataclay:
-        dataclay_host = context.run_config.get("dataclay-host", "127.0.0.1")
-        dataclay_dataset = context.run_config.get("dataclay-dataset", "admin")
-        dataclay_config_msg = (
-            f"DataClay configuration: host={dataclay_host}, dataset={dataclay_dataset}"
-        )
-        logger.log(INFO, dataclay_config_msg)
+    # Log DataClay configuration
+    dataclay_config_msg = (
+        f"DataClay configuration: host={dataclay_host}, dataset={dataclay_dataset}"
+    )
 
     logger.log(INFO, start_msg)
     logger.log(INFO, rounds_msg)
     logger.log(INFO, fraction_msg)
     logger.log(INFO, clients_msg)
     logger.log(INFO, storage_msg)
+    logger.log(INFO, dataclay_config_msg)
 
     return ServerAppComponents(strategy=strategy, config=config)
 
