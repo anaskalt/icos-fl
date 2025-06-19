@@ -4,17 +4,217 @@ This module provides the Fetcher class for connecting to DataClay and
 retrieving time series data for LSTM model training and evaluation.
 It handles establishing connections, retrieving data, and processing
 it into a suitable format for the Processor component.
+
+Additionally, this module provides resource configuration management
+classes that enable flexible matching and organization of resources
+based on custom rules, facilitating integration with external bridge
+applications and monitoring systems.
 """
 
 import time
 from threading import Event
-from typing import List, Optional
+from typing import Any, Callable, List, Optional, Tuple
 
 import pandas as pd
 from dataclay import Client, DataClayObject, activemethod
 from dataclay.exceptions import DataClayException
 
 from icos_fl.utils.singleton import Singleton
+
+# Type alias for match rules: (key, matcher_function, expected_value)
+MatchRule = Tuple[str, Callable[[Any, Any], bool], Any]
+
+
+class ResourceConfiguration(DataClayObject):
+    """Hold the configuration for a resource, including the rules to match it.
+
+    The rules are provided as a list of tuples, where each tuple contains:
+    - The key to match
+    - A function to match the value (typically from operator module)
+    - The expected value
+
+    This enables flexible resource matching based on customizable criteria,
+    supporting complex filtering and organization of monitoring resources.
+
+    Example:
+        >>> rc = ResourceConfiguration("cpu_intensive", [("cpu_usage", operator.gt, 0.8)])
+
+        This configuration will match any resource where cpu_usage > 0.8
+
+    Attributes:
+        name: Unique identifier for this resource configuration
+        rules: List of match rules to apply
+        metric_names: Set of metric names being collected for matched resources
+    """
+
+    name: str
+    rules: List[MatchRule]
+    metric_names: set[str]
+
+    def __init__(
+        self,
+        name: str,
+        rules: Optional[List[MatchRule]] = None,
+        metric_names: Optional[set[str]] = None,
+    ) -> None:
+        """Initialize a ResourceConfiguration with matching rules.
+
+        Creates a new resource configuration with the specified name and optional
+        matching rules. The configuration can be used to identify resources that
+        meet specific criteria and determine which metrics should be collected.
+
+        Args:
+            name: Unique identifier for this configuration
+            rules: List of (key, matcher_function, value) tuples defining match criteria
+            metric_names: Initial set of metrics to collect for matched resources
+        """
+        self.name = name
+        self.rules = rules or []
+        self.metric_names = metric_names or set()
+
+    @activemethod
+    def add_metric(self, metric_name: str) -> None:
+        """Add a metric to be collected for resources matching this configuration.
+
+        Adds the specified metric name to the collection set. If the metric
+        already exists in the set, no action is taken (sets naturally handle duplicates).
+
+        Args:
+            metric_name: Name of the metric to add to the collection set
+        """
+        self.metric_names.add(metric_name)
+
+    @activemethod
+    def remove_metric(self, metric_name: str) -> None:
+        """Remove a metric from the collection set.
+
+        Removes the specified metric from the set of metrics to be collected
+        for resources matching this configuration.
+
+        Args:
+            metric_name: Name of the metric to remove from collection
+
+        Raises:
+            KeyError: If the metric_name doesn't exist in the metric_names set
+        """
+        self.metric_names.remove(metric_name)
+
+    @activemethod
+    def match(self, resource_kvs: dict[str, str]) -> bool:
+        """Check if a resource matches all rules in this configuration.
+
+        Evaluates all rules against the provided resource key-value pairs.
+        A resource matches only if ALL rules evaluate to True. If a rule
+        references a key that doesn't exist in the resource, the match fails.
+
+        Args:
+            resource_kvs: Dictionary of resource attributes to match against
+
+        Returns:
+            True if all rules match, False if any rule fails
+
+        Example:
+            >>> rc = ResourceConfiguration("test", [("type", operator.eq, "server")])
+            >>> rc.match({"type": "server", "location": "rack1"})  # Returns True
+            >>> rc.match({"type": "client", "location": "rack1"})  # Returns False
+        """
+        for rule in self.rules:
+            key, matcher, value = rule
+            # Check if key exists in resource_kvs
+            if key not in resource_kvs:
+                return False
+            # Apply the matcher function
+            if not matcher(resource_kvs[key], value):
+                return False
+        return True
+
+
+class BridgeConfiguration(DataClayObject):
+    """Aggregate configuration for the monitoring bridge system.
+
+    This class serves as a central configuration manager, holding multiple
+    resource configurations and global settings for the bridge application.
+    It provides methods to manage resource configurations dynamically and
+    find matching configurations for incoming resources.
+
+    Key Features:
+    - Centralized management of resource configurations
+    - Dynamic addition/removal of configurations
+    - Efficient matching of resources to configurations
+    - Configurable dataframe time-to-live settings
+
+    Attributes:
+        resource_configurations: Dictionary mapping names to ResourceConfiguration objects
+        dataframe_ttl: Time-to-live for dataframes in seconds (default: 60)
+    """
+
+    resource_configurations: dict[str, ResourceConfiguration]
+    dataframe_ttl: int
+
+    def __init__(self) -> None:
+        """Initialize an empty BridgeConfiguration with default settings.
+
+        Creates a new bridge configuration with an empty resource configuration
+        dictionary and a default TTL of 60 seconds for dataframes. The TTL
+        determines how long dataframes are retained before being considered stale.
+        """
+        self.resource_configurations = {}
+        self.dataframe_ttl = 60
+
+    @activemethod
+    def set_res_config(self, rc: ResourceConfiguration) -> None:
+        """Add or update a resource configuration.
+
+        Stores the provided resource configuration in the internal dictionary,
+        using the configuration's name as the key. If a configuration with the
+        same name already exists, it will be replaced with the new one.
+
+        Args:
+            rc: ResourceConfiguration object to add or update
+        """
+        self.resource_configurations[rc.name] = rc
+
+    @activemethod
+    def remove_res_config(self, name: str) -> None:
+        """Remove a resource configuration by name.
+
+        Deletes the resource configuration with the specified name from the
+        internal configuration dictionary.
+
+        Args:
+            name: Name of the configuration to remove
+
+        Raises:
+            KeyError: If no configuration with the given name exists
+        """
+        del self.resource_configurations[name]
+
+    @activemethod
+    def get_matching_res_configs(
+        self, resource_kvs: dict[str, str]
+    ) -> List[ResourceConfiguration]:
+        """Find all resource configurations that match the given resource attributes.
+
+        Iterates through all stored configurations and returns those whose rules
+        match the provided resource key-value pairs. A resource can match multiple
+        configurations, and all matching configurations are returned.
+
+        Args:
+            resource_kvs: Dictionary of resource attributes to match against
+
+        Returns:
+            List of ResourceConfiguration objects that match the resource
+
+        Example:
+            >>> bc = BridgeConfiguration()
+            >>> rc1 = ResourceConfiguration("high_cpu", [("cpu_usage", operator.gt, 0.8)])
+            >>> rc2 = ResourceConfiguration("prod_server", [("env", operator.eq, "production")])
+            >>> bc.set_res_config(rc1)
+            >>> bc.set_res_config(rc2)
+            >>> matches = bc.get_matching_res_configs({"cpu_usage": 0.9, "env": "production"})
+            >>> # Returns both rc1 and rc2 as both match the resource
+        """
+        return [rc for rc in self.resource_configurations.values() if rc.match(resource_kvs)]
 
 
 class TimeSeriesData(DataClayObject):
