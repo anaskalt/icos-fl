@@ -16,9 +16,9 @@ dependencies = [
   "flwr[simulation]>=1.18",
   "torch==2.5.1",
   "wandb==0.19.8",
-  "pandas>=2.2.3",
+  "pandas>=1.5.3",
   "scikit-learn>=1.6.1",
-  "dataclay==4.0.0",
+  "dataclay @ git+https://github.com/bsc-dom/dataclay.git"
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -65,7 +65,7 @@ type = [
     "mypy>=1.13.0",
 ]
 docs = [
-    "sphinx==8.2.3",
+    "sphinx==8.1.3",
     "furo==2024.8.6",
     "sphinx-notfound-page==1.1.0",
     "sphinx-inline-tabs==2023.4.21",
@@ -74,6 +74,9 @@ docs = [
 all = [
     "icos-fl[dev,test,lint,sec,type,docs]",
 ]
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["."]
@@ -218,6 +221,16 @@ learning-rate = 0.001
 # For local development use ./outputs/models
 result-dir = "/app/outputs/models"
 
+# Model persistence configuration
+# Enable/disable different storage backends for trained models
+save-local = true          # Save models to local filesystem (default: true)
+save-dataclay = false      # Save models to DataClay distributed storage (default: false)
+
+# DataClay configuration (used when save-dataclay = true)
+dataclay-host = "127.0.0.1"    # DataClay proxy server address
+dataclay-dataset = "admin"      # DataClay dataset name for authentication
+
+# Weights & Biases configuration
 use-wandb = false
 
 [tool.flwr.federations]

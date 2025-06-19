@@ -178,18 +178,23 @@ class IcosClient(NumPyClient):
 
 
 def client_fn(context: Context) -> NumPyClient:
-    """Create and return a Flower client instance.
+    """Create and return a Flower client instance with configuration-driven setup.
 
-    This function is used by the ClientApp to create a client instance
-    for each node in the federated learning system. It extracts configuration
-    from the context, initializes the model, and prepares data loaders
-    for training and evaluation.
+    This function initializes the client with proper DataClay configuration
+    extracted from the context, ensuring consistent connection parameters
+    across all components of the federated learning system.
+
+    Key Features:
+    - Extracts DataClay configuration from context.run_config
+    - Creates Fetcher with shared connection parameters
+    - Handles data fetching failures gracefully
+    - Ensures proper resource cleanup
 
     Args:
-        context: Flower client context with configuration and node info
+        context: Flower client context containing configuration and node info
 
     Returns:
-        Instantiated NumPyClient
+        Configured NumPyClient instance ready for federated learning
     """
     # Extract client ID from context
     client_id = context.node_config.get("cid", context.node_id)
@@ -205,6 +210,16 @@ def client_fn(context: Context) -> NumPyClient:
     batch_size = int(context.run_config.get("batch-size", 64))
     train_test_split = float(context.run_config.get("train-test-split", 0.8))
 
+    # Extract DataClay configuration from run_config
+    dataclay_host = context.run_config.get("dataclay-host", "127.0.0.1")
+    dataclay_dataset = context.run_config.get("dataclay-dataset", "admin")
+
+    dataclay_config_msg = (
+        f"Client {client_id}: Using DataClay configuration - "
+        f"host={dataclay_host}, dataset={dataclay_dataset}"
+    )
+    logger.log(INFO, dataclay_config_msg)
+
     # Set device for computation
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -215,8 +230,10 @@ def client_fn(context: Context) -> NumPyClient:
     fetcher = None
 
     try:
+        # Create Fetcher with configuration from run_config
+        fetcher = Fetcher(proxy_host=dataclay_host, dataset=dataclay_dataset)
+
         # Fetch data
-        fetcher = Fetcher()
         df = fetcher.fetch_data(timeout=200)
 
         if df is not None and len(df) > 0:

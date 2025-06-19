@@ -2,7 +2,7 @@
 
 This module defines the server setup for the federated learning system,
 initializing and configuring the Flower ServerApp with appropriate strategy
-for centralized model aggregation and evaluation.
+for centralized model aggregation, evaluation and multi-backend persistence.
 """
 
 import logging
@@ -37,11 +37,15 @@ logging.getLogger("flwr").propagate = False
 # Display server banner
 print_server_banner()
 
-fetcher = Fetcher()
-
 
 def gen_evaluate_fn(
-    model: LSTMModel, metric: str, time_step: int, batch_size: int, device: torch.device
+    model: LSTMModel,
+    metric: str,
+    time_step: int,
+    batch_size: int,
+    device: torch.device,
+    dataclay_host: str,
+    dataclay_dataset: str,
 ) -> Callable[[int, NDArrays, Dict[str, Scalar]], Optional[Tuple[float, Dict[str, Scalar]]]]:
     """Generate a centralized evaluation function.
 
@@ -54,6 +58,8 @@ def gen_evaluate_fn(
         time_step: Window size for time series prediction
         batch_size: Batch size for data loaders
         device: Device to run evaluation on
+        dataclay_host: DataClay proxy host address
+        dataclay_dataset: DataClay dataset name
 
     Returns:
         Function that takes (round, parameters, config) and returns (loss, metrics)
@@ -75,6 +81,9 @@ def gen_evaluate_fn(
 
             df = None
 
+            # Create fetcher with the same DataClay configuration
+            fetcher = Fetcher(proxy_host=dataclay_host, dataset=dataclay_dataset)
+
             # Fetch test dataset using Fetcher
             try:
                 df = fetcher.fetch_data(timeout=60)
@@ -82,6 +91,14 @@ def gen_evaluate_fn(
                 error_msg = f"Error fetching data: {e}"
                 logger.log(CRITICAL, error_msg)
                 return None
+            finally:
+                # Clean up fetcher after use
+                try:
+                    fetcher._disconnect()
+                except Exception as e:  # noqa: BLE001
+                    # Log disconnection errors at warning level for debugging
+                    disconnect_warning_msg = f"Warning during fetcher disconnect: {e}"
+                    logger.log(WARN, disconnect_warning_msg)
 
             if df is None or len(df) == 0:
                 no_data_msg = "No data available for centralized evaluation"
@@ -206,18 +223,25 @@ def create_model_directory(base_dir: str, metric: str) -> str:
 
 
 def server_fn(context: Context) -> ServerAppComponents:
-    """Create and return a Flower server instance.
+    """Create and return a Flower server instance with multi-backend storage support.
 
     This function is used by the ServerApp to create server components
-    for the federated learning system.
+    for the federated learning system. It configures storage backends based
+    on the run_config parameters, enabling flexible model persistence options.
+
+    Storage Configuration Keys in run_config:
+    - save-local: Enable local filesystem storage (default: True)
+    - save-dataclay: Enable DataClay distributed storage (default: False)
+    - dataclay-host: DataClay proxy host address (default: "127.0.0.1")
+    - dataclay-dataset: DataClay dataset name (default: "admin")
 
     Args:
-        context: Flower server context
+        context: Flower server context containing run configuration
 
     Returns:
-        Instantiated ServerAppComponents
+        Instantiated ServerAppComponents with configured strategy and server config
     """
-    # Extract configuration from context
+    # Extract core FL configuration from context
     num_rounds = int(context.run_config.get("num-server-rounds", 10))
     fraction_fit = float(context.run_config.get("fraction-fit", 0.5))
     fraction_evaluate = float(context.run_config.get("fraction-evaluate", 0.5))
@@ -228,13 +252,18 @@ def server_fn(context: Context) -> ServerAppComponents:
     batch_size = int(context.run_config.get("batch-size", 64))
     use_wandb = context.run_config.get("use-wandb", True)
 
+    # Extract training configuration
     learning_rate = float(context.run_config.get("learning-rate", 0.001))
     on_fit_config_fn = create_on_fit_config_fn(learning_rate)
 
-    # Create model parameters
+    # Extract model architecture parameters
     hidden_layer_size = int(context.run_config.get("hidden-layer-size", 10))
     time_step = int(context.run_config.get("time-step", 10))
     num_layers = int(context.run_config.get("num-layers", 1))
+
+    # Extract DataClay configuration
+    dataclay_host = context.run_config.get("dataclay-host", "127.0.0.1")
+    dataclay_dataset = context.run_config.get("dataclay-dataset", "admin")
 
     # Get result directory from context and create model directory
     result_dir = context.run_config.get("result-dir", "/app/outputs/models")
@@ -249,10 +278,11 @@ def server_fn(context: Context) -> ServerAppComponents:
     # Get initial model parameters
     initial_parameters = ndarrays_to_parameters(get_weights(model))
 
-    # Create strategy
+    # Create strategy with storage configuration
+    # Note: CustomFedAvg will read storage options directly from run_config
     strategy = CustomFedAvg(
-        # Custom parameters
-        run_config=context.run_config,
+        # Storage configuration
+        run_config=context.run_config,  # Pass entire config for storage options
         model=model,
         metric=metric,
         use_wandb=use_wandb,
@@ -269,13 +299,15 @@ def server_fn(context: Context) -> ServerAppComponents:
         fit_metrics_aggregation_fn=train_metrics_aggregation,
         evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation,
         # Centralized evaluation function
-        evaluate_fn=gen_evaluate_fn(model, metric, time_step, batch_size, device),
+        evaluate_fn=gen_evaluate_fn(
+            model, metric, time_step, batch_size, device, dataclay_host, dataclay_dataset
+        ),
     )
 
     # Create server configuration
     config = ServerConfig(num_rounds=num_rounds)
 
-    # Log server configuration
+    # Log server configuration for visibility
     start_msg = f"Starting server for metric {metric}"
     rounds_msg = f"Number of rounds: {num_rounds}"
     fraction_msg = f"Fraction fit: {fraction_fit}, Fraction evaluate: {fraction_evaluate}"
@@ -283,13 +315,23 @@ def server_fn(context: Context) -> ServerAppComponents:
         f"Minimum clients - fit: {min_fit_clients}, evaluate: {min_evaluate_clients}, "
         f"available: {min_available_clients}"
     )
-    save_msg = f"Model saved to: {save_dir}"
+
+    # Log storage configuration
+    save_local = context.run_config.get("save-local", True)
+    save_dataclay = context.run_config.get("save-dataclay", False)
+    storage_msg = f"Model storage configuration: local={save_local}, dataclay={save_dataclay}"
+
+    # Log DataClay configuration
+    dataclay_config_msg = (
+        f"DataClay configuration: host={dataclay_host}, dataset={dataclay_dataset}"
+    )
 
     logger.log(INFO, start_msg)
     logger.log(INFO, rounds_msg)
     logger.log(INFO, fraction_msg)
     logger.log(INFO, clients_msg)
-    logger.log(INFO, save_msg)
+    logger.log(INFO, storage_msg)
+    logger.log(INFO, dataclay_config_msg)
 
     return ServerAppComponents(strategy=strategy, config=config)
 
