@@ -47,7 +47,7 @@ class CustomFedAvg(FedAvg):
         model: The LSTM model used for federated learning
         metric: The metric being predicted (cpu_usage, memory_usage, power_consumption)
         use_wandb: Whether to use Weights & Biases for metrics logging
-        save_dir: Directory for local model checkpoints
+        save_dir: Optional directory for local model checkpoints
     """
 
     def __init__(
@@ -56,7 +56,7 @@ class CustomFedAvg(FedAvg):
         model: LSTMModel,
         metric: str,
         use_wandb: bool = True,
-        save_dir: str = "model",
+        save_dir: Optional[str] = None,
         *args,  # noqa: ANN002
         **kwargs,  # noqa: ANN003
     ) -> None:
@@ -67,6 +67,11 @@ class CustomFedAvg(FedAvg):
         - 'save-dataclay': Whether to save models to DataClay (default: False)
         - 'dataclay-host': DataClay proxy host (default: "127.0.0.1")
         - 'dataclay-dataset': DataClay dataset name (default: "admin")
+
+        Key Implementation Details:
+        - If neither storage backend is enabled, defaults to local storage
+        - DataClay initialization failures trigger automatic fallback to local storage
+        - The save_dir parameter is only required when save-local is True
         """
         super().__init__(*args, **kwargs)
 
@@ -80,15 +85,25 @@ class CustomFedAvg(FedAvg):
         self.save_local = run_config.get("save-local", True)
         self.save_dataclay = run_config.get("save-dataclay", False)
 
-        # Ensure at least one backend is enabled
+        # Validate storage configuration to ensure at least one backend is operational
         if not self.save_local and not self.save_dataclay:
-            self.save_local = True
+            if self.save_dir is not None:
+                # Enable local storage when directory is available
+                self.save_local = True
+                logger.log(INFO, "No storage backend configured - enabling local storage")
+            else:
+                # Critical: No viable storage backend available
+                logger.log(
+                    WARN,
+                    "No storage backend available and no save directory provided - "
+                    "models will not be persisted",
+                )
 
         # Model configuration for reconstruction
         self.model_config = {
-            "hidden_layer_size": getattr(model, "hidden_layer_size", None),
-            "time_step": getattr(model, "time_step", None),
-            "num_layers": getattr(model, "num_layers", None),
+            "hidden_layer_size": model.hidden_layer_size,
+            "time_step": model.time_step,
+            "num_layers": model.num_layers,
             "class": model.__class__.__name__,
             "module": model.__class__.__module__,
         }
@@ -105,24 +120,29 @@ class CustomFedAvg(FedAvg):
                     proxy_host=dataclay_host, dataset=dataclay_dataset
                 )
 
-                storage_config_msg = (
-                    f"Storage backends initialized - "
-                    f"Local: {'enabled' if self.save_local else 'disabled'}, "
-                    f"DataClay: {'enabled' if self.save_dataclay else 'disabled'}"
+                dataclay_info_msg = (
+                    f"DataClay storage initialized - host: {dataclay_host}, "
+                    f"dataset: {dataclay_dataset}"
                 )
-                logger.log(INFO, storage_config_msg)
+                logger.log(INFO, dataclay_info_msg)
 
             except (ImportError, ConnectionError, RuntimeError) as e:
                 error_msg = f"Failed to initialize DataClay storage: {e}"
-                fallback_msg = "Falling back to local storage only"
                 logger.log(ERROR, error_msg)
-                logger.log(INFO, fallback_msg)
-                self.save_dataclay = False
-                self.save_local = True  # Ensure at least one backend is active
 
-        # Create directory for saving results if local storage is enabled
-        if self.save_local:
-            os.makedirs(self.save_dir, exist_ok=True)
+                # Fallback to local storage only if save_dir is available
+                self.save_dataclay = False
+                if self.save_dir is not None:
+                    fallback_msg = "Falling back to local storage"
+                    logger.log(INFO, fallback_msg)
+                    self.save_local = True
+                else:
+                    # Cannot fallback to local storage without directory
+                    no_fallback_msg = (
+                        "Cannot fallback to local storage - no save directory provided. "
+                        "Models will not be persisted"
+                    )
+                    logger.log(WARN, no_fallback_msg)
 
         # Initialize WandB if enabled
         if self.use_wandb:
@@ -138,14 +158,6 @@ class CustomFedAvg(FedAvg):
             message=f"  Federated Learning strategy for metric: {metric}",
             show_version=False,
         )
-
-        if self.save_local:
-            save_msg = f"Local model storage directory: {save_dir}"
-            logger.log(INFO, save_msg)
-
-        if self.save_dataclay:
-            dataclay_msg = "DataClay distributed storage: enabled"
-            logger.log(INFO, dataclay_msg)
 
     def _init_wandb(self) -> None:
         """Initialize Weights & Biases project."""
@@ -170,6 +182,9 @@ class CustomFedAvg(FedAvg):
     def _save_model_local(self, save_path: str, metadata: Dict[str, Any]) -> bool:
         """Save model locally with atomic writes.
 
+        Note: Directory creation is handled by server.py during initialization.
+        This method assumes the directory already exists.
+
         Args:
             save_path: Full path for saving the model
             metadata: Metadata to include in checkpoint
@@ -178,14 +193,13 @@ class CustomFedAvg(FedAvg):
             True if save successful, False otherwise
         """
         try:
-            os.makedirs(self.save_dir, exist_ok=True)
             checkpoint = {
                 "model_state_dict": self.model.state_dict(),
                 "model_config": self.model_config,
                 "metadata": metadata,
             }
 
-            # Atomic write
+            # Atomic write to prevent corruption
             temp_path = f"{save_path}.tmp"
             torch.save(checkpoint, temp_path)
             os.replace(temp_path, save_path)
@@ -197,12 +211,12 @@ class CustomFedAvg(FedAvg):
             return False
 
     def _save_model_backends(
-        self, save_path: str, identifier: str, metadata: Dict[str, Any]
+        self, save_path: Optional[str], identifier: str, metadata: Dict[str, Any]
     ) -> Dict[str, bool]:
         """Save model to configured backends.
 
         Args:
-            save_path: Path for local save
+            save_path: Path for local save (can be None if local storage is disabled)
             identifier: Identifier for DataClay save
             metadata: Metadata for the save
 
@@ -214,14 +228,14 @@ class CustomFedAvg(FedAvg):
         if self.storage_manager:
             results = self.storage_manager.save_model(
                 model=self.model,
-                save_path=save_path,
+                save_path=save_path or "",
                 identifier=identifier,
-                use_local=self.save_local,
+                use_local=self.save_local and save_path is not None,
                 use_dataclay=self.save_dataclay,
                 model_config=self.model_config,
                 metadata=metadata,
             )
-        elif self.save_local:
+        elif self.save_local and save_path is not None:
             # Direct local save fallback
             results["local"] = self._save_model_local(save_path, metadata)
 
@@ -258,8 +272,10 @@ class CustomFedAvg(FedAvg):
             filename = f"best_model_{self.metric}.pt"
             identifier = f"{self.metric}_best"
 
-        # Construct full save path
-        save_path = os.path.join(self.save_dir, filename)
+        # Construct full save path only if save_dir is available
+        save_path = None
+        if self.save_dir is not None and self.save_local:
+            save_path = os.path.join(self.save_dir, filename)
 
         # Prepare comprehensive metadata
         metadata = {
@@ -280,17 +296,12 @@ class CustomFedAvg(FedAvg):
 
         # Log results
         if results["local"]:
-            local_save_msg = f"Model saved locally: {filename}"
+            local_save_msg = f"Model saved to local storage: {filename}"
             logger.log(INFO, local_save_msg)
 
         if results["dataclay"]:
             dataclay_save_msg = f"Model persisted to DataClay: {identifier}"
             logger.log(INFO, dataclay_save_msg)
-
-        # Warn if all saves failed
-        if not any(results.values()):
-            all_failed_msg = f"WARNING: Failed to save {model_type} model to any backend"
-            logger.log(WARN, all_failed_msg)
 
     def aggregate_fit(
         self,

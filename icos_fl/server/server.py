@@ -182,7 +182,7 @@ def on_evaluate_config(server_round: int) -> Dict[str, Scalar]:
 
 
 def create_model_directory(base_dir: str, metric: str) -> str:
-    """Create and return the model directory path.
+    """Create and return the model directory path when local storage is enabled.
 
     This function attempts to create a directory for storing model artifacts.
     If the requested directory cannot be created, it falls back to /tmp.
@@ -200,7 +200,7 @@ def create_model_directory(base_dir: str, metric: str) -> str:
     try:
         # Try to create the directory
         os.makedirs(save_dir, exist_ok=True)
-        created_msg = f"Created model directory: {save_dir}"
+        created_msg = f"Model directory prepared: {save_dir}"
         logger.log(INFO, created_msg)
         return save_dir
     except (PermissionError, OSError) as e:
@@ -217,7 +217,7 @@ def create_model_directory(base_dir: str, metric: str) -> str:
         tmp_dir = os.path.join(temp_base, f"icos-fl-{metric}")
         os.makedirs(tmp_dir, exist_ok=True)
 
-        tmp_msg = f"Created temporary directory: {tmp_dir}"
+        tmp_msg = f"Temporary directory prepared: {tmp_dir}"
         logger.log(INFO, tmp_msg)
         return tmp_dir
 
@@ -225,21 +225,25 @@ def create_model_directory(base_dir: str, metric: str) -> str:
 def server_fn(context: Context) -> ServerAppComponents:
     """Create and return a Flower server instance with multi-backend storage support.
 
-    This function is used by the ServerApp to create server components
-    for the federated learning system. It configures storage backends based
-    on the run_config parameters, enabling flexible model persistence options.
+    This function serves as the primary entry point for ServerApp initialization,
+    configuring the federated learning system with flexible storage options.
 
-    Storage Configuration Keys in run_config:
+    Key Responsibilities:
+    - Extract and validate configuration parameters from context
+    - Initialize model directory structure when local storage is enabled
+    - Configure CustomFedAvg strategy with appropriate storage backends
+    - Set up centralized evaluation functionality
+
+    Storage Backend Configuration:
     - save-local: Enable local filesystem storage (default: True)
     - save-dataclay: Enable DataClay distributed storage (default: False)
-    - dataclay-host: DataClay proxy host address (default: "127.0.0.1")
-    - dataclay-dataset: DataClay dataset name (default: "admin")
+    - When both are False, defaults to local storage for reliability
 
     Args:
-        context: Flower server context containing run configuration
+        context: Flower server context containing complete run configuration
 
     Returns:
-        Instantiated ServerAppComponents with configured strategy and server config
+        ServerAppComponents with configured strategy and server config
     """
     # Extract core FL configuration from context
     num_rounds = int(context.run_config.get("num-server-rounds", 10))
@@ -265,11 +269,18 @@ def server_fn(context: Context) -> ServerAppComponents:
     dataclay_host = context.run_config.get("dataclay-host", "127.0.0.1")
     dataclay_dataset = context.run_config.get("dataclay-dataset", "admin")
 
-    # Get result directory from context and create model directory
-    result_dir = context.run_config.get("result-dir", "/app/outputs/models")
-    save_dir = create_model_directory(result_dir, metric)
+    # Extract storage configuration
+    save_local = context.run_config.get("save-local", True)
 
-    # Initialize model
+    # Get result directory from context
+    result_dir = context.run_config.get("result-dir", "/app/outputs/models")
+
+    # Only create model directory if local storage is enabled
+    save_dir = None
+    if save_local:
+        save_dir = create_model_directory(result_dir, metric)
+
+    # Initialize model architecture
     device = torch.device(context.run_config.get("server-device", "cpu"))
     model = LSTMModel(
         hidden_layer_size=hidden_layer_size, time_step=time_step, num_layers=num_layers
@@ -316,22 +327,10 @@ def server_fn(context: Context) -> ServerAppComponents:
         f"available: {min_available_clients}"
     )
 
-    # Log storage configuration
-    save_local = context.run_config.get("save-local", True)
-    save_dataclay = context.run_config.get("save-dataclay", False)
-    storage_msg = f"Model storage configuration: local={save_local}, dataclay={save_dataclay}"
-
-    # Log DataClay configuration
-    dataclay_config_msg = (
-        f"DataClay configuration: host={dataclay_host}, dataset={dataclay_dataset}"
-    )
-
     logger.log(INFO, start_msg)
     logger.log(INFO, rounds_msg)
     logger.log(INFO, fraction_msg)
     logger.log(INFO, clients_msg)
-    logger.log(INFO, storage_msg)
-    logger.log(INFO, dataclay_config_msg)
 
     return ServerAppComponents(strategy=strategy, config=config)
 
