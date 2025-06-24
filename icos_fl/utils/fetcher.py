@@ -19,8 +19,6 @@ import pandas as pd
 from dataclay import Client, DataClayObject, activemethod
 from dataclay.exceptions import DataClayException
 
-from icos_fl.utils.singleton import Singleton
-
 # Type alias for match rules: (key, matcher_function, expected_value)
 MatchRule = Tuple[str, Callable[[Any, Any], bool], Any]
 
@@ -290,7 +288,7 @@ class TimeSeriesData(DataClayObject):
         return self.dataframe
 
 
-class Fetcher(metaclass=Singleton):
+class Fetcher:
     """Fetcher for retrieving time series data from DataClay.
 
     This class handles connecting to DataClay, retrieving data through
